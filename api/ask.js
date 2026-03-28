@@ -86,7 +86,7 @@ export default async function handler(req, res) {
             ? [{ role: 'user', content: 'Hello, I want to plan a trip to Japan.' }]
             : messages),
         ],
-        max_tokens: 1000,
+        max_tokens: 3000,
         temperature: 0.7,
       }),
     });

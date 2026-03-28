@@ -5,7 +5,10 @@ function stripArtifacts(text) {
     .replace(/\[[^\]]{1,40}\]/g, '')
     .replace(/\(\d+\s*palabras?\)/gi, '')
     .replace(/\(\d+\s*words?\)/gi, '')
-    .replace(/\s{2,}/g, ' ')
+    // Ensure headers (###, ##, #) always start on their own line
+    .replace(/([^\n])(#{1,3} )/g, '$1\n\n$2')
+    // Ensure bullet points always start on their own line
+    .replace(/([^\n])(- )/g, '$1\n$2')
     .trim();
 }
 

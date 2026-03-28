@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 // Strip Perplexity citation markers like [1], [2], [1][2]
 function stripCitations(text) {
   return text
-    .replace(/\[\d+\]/g, '')
+    .replace(/\[[^\]]{1,40}\]/g, '')
     .replace(/\(\d+\s*palabras?\)/gi, '')
     .replace(/\(\d+\s*words?\)/gi, '')
     .replace(/\s{2,}/g, ' ')

@@ -92,6 +92,8 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
     setMessages((prev) => [...prev, { role: 'assistant', content }]);
   };
 
+  const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
+
   const handleStart = useCallback(async () => {
     setStarted(true);
     setMessages([]);
@@ -99,7 +101,8 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
     setLoading(true);
     try {
       const reply = await callApi([], context);
-      appendAssistant(reply);
+      // Store trigger msg + reply so future turns alternate user/assistant correctly
+      setMessages([TRIGGER, { role: 'assistant', content: reply }]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -172,7 +175,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
       {started && (
         <div className="ai-chat">
           <div className="ai-messages">
-            {messages.map((msg, i) => (
+            {messages.filter((msg) => msg.content !== TRIGGER.content).map((msg, i) => (
               <div key={i} className={`ai-bubble ai-bubble--${msg.role}`}>
                 <MarkdownText text={msg.content} />
               </div>

@@ -1,4 +1,7 @@
+import { useLang } from '../i18n.jsx';
+
 export default function TopList({ filteredSpots, selectedSpot, onSpotClick }) {
+  const { t } = useLang();
   const sorted = [...filteredSpots]
     .sort((a, b) => b.totalVisits - a.totalVisits)
     .slice(0, 10);
@@ -7,7 +10,7 @@ export default function TopList({ filteredSpots, selectedSpot, onSpotClick }) {
 
   return (
     <div className="top-list">
-      <h3>Top 10 Destinations</h3>
+      <h3>{t('top10')}</h3>
       <ol>
         {sorted.map((spot, i) => (
           <li

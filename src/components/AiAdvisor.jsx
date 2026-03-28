@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useLang } from '../i18n.jsx';
 
 function stripArtifacts(text) {
   return text
@@ -70,7 +71,8 @@ async function callApi(messages, context) {
   return data.choices?.[0]?.message?.content ?? '';
 }
 
-export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) {
+export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, lang }) {
+  const { t } = useLang();
   const [messages, setMessages] = useState([]);   // {role, content}[]
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,7 +86,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
       name: s.name, prefecture: s.prefecture, region: s.region,
       crowdCategory: s.crowdCategory, totalVisits: s.totalVisits,
     })),
-    filter, mode, crowdFilter,
+    filter, mode, crowdFilter, lang,
   };
 
   useEffect(() => {
@@ -135,8 +137,8 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
 
   const handleReset = () => { setMessages([]); setStarted(false); setError(null); setInput(''); };
 
-  const modeLabel = { all: 'All visitors', international: 'International only', domestic: 'Domestic only' }[mode];
-  const crowdLabel = { all: 'All spots', local: 'Local Gems', mixed: 'Mixed', tourist: 'Tourist Hotspots' }[crowdFilter];
+  const modeLabel = { all: t('aiAllVisitors'), international: t('aiIntlOnly'), domestic: t('aiDomOnly') }[mode];
+  const crowdLabel = { all: t('aiAllSpots'), local: t('aiLocalGems'), mixed: t('aiMixed'), tourist: t('aiTourist') }[crowdFilter];
 
   return (
     <div className="ai-advisor">
@@ -144,21 +146,21 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
       <div className="ai-header">
         <span className="ai-icon">🤖</span>
         <div>
-          <p className="ai-title">AI Trip Planner</p>
-          <p className="ai-subtitle">Powered by Perplexity Sonar</p>
+          <p className="ai-title">{t('aiTitle')}</p>
+          <p className="ai-subtitle">{t('aiSubtitle')}</p>
         </div>
         {started && (
-          <button className="ai-reset-btn" title="New trip" onClick={handleReset}>↺ New</button>
+          <button className="ai-reset-btn" title="New trip" onClick={handleReset}>{t('aiNew')}</button>
         )}
       </div>
 
       {/* Context pills */}
       <div className="ai-context">
-        <p className="ai-context-title">Active context</p>
+        <p className="ai-context-title">{t('aiContext')}</p>
         <div className="ai-context-pills">
           <span className="ai-pill">{modeLabel}</span>
           <span className="ai-pill">{crowdLabel}</span>
-          <span className="ai-pill">{filteredSpots.length} destinations</span>
+          <span className="ai-pill">{filteredSpots.length} {t('aiDests')}</span>
         </div>
       </div>
 
@@ -166,10 +168,10 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
       {!started && (
         <div className="ai-start">
           <p className="ai-start-desc">
-            I'll ask you a few quick questions and build a personalised day-by-day Japan itinerary based on your current map filters.
+            {t('aiStartDesc')}
           </p>
           <button className="ai-ask-btn" onClick={handleStart} disabled={filteredSpots.length === 0}>
-            ✨ Start planning
+            {t('aiStartBtn')}
           </button>
         </div>
       )}
@@ -198,7 +200,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
               ref={inputRef}
               className="ai-chat-input"
               rows={1}
-              placeholder="Type your answer…"
+              placeholder={t('aiPlaceholder')}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {

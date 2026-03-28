@@ -1,9 +1,12 @@
 import { ALL_YEARS, MONTH_NAMES } from '../data/japanSpots';
+import { useLang } from '../i18n.jsx';
 
 export default function SpotInfo({ spot, filter, mode }) {
+  const { t } = useLang();
+
   if (!spot) return (
     <div className="spot-info empty">
-      <p>Click a marker on the map to see details</p>
+      <p>{t('clickMarker')}</p>
     </div>
   );
 
@@ -22,12 +25,12 @@ export default function SpotInfo({ spot, filter, mode }) {
         </div>
         <div className="spot-total">
           <span className="total-number">{spot.totalVisits.toLocaleString()}k</span>
-          <span className="total-label">visitors</span>
+          <span className="total-label">{t('visitors')}</span>
         </div>
       </div>
 
       <div className="chart-title">
-        {chartData.length > 0 ? 'Monthly visitors (thousands)' : 'No data for selected period'}
+        {chartData.length > 0 ? t('monthlyChart') : t('noData')}
       </div>
 
       <div className="bar-chart">
@@ -64,25 +67,15 @@ function buildChartData(series, filter) {
     }
     return items;
   }
-
   if (filter.year && filter.month) {
     return [{ label: `${MONTH_NAMES[filter.month - 1]} ${filter.year}`, value: series[filter.year]?.[filter.month] ?? 0 }];
   }
-
   if (filter.year) {
-    return MONTH_NAMES.map((name, i) => ({
-      label: name,
-      value: series[filter.year]?.[i + 1] ?? 0,
-    }));
+    return MONTH_NAMES.map((name, i) => ({ label: name, value: series[filter.year]?.[i + 1] ?? 0 }));
   }
-
   if (filter.month) {
-    return ALL_YEARS.map((y) => ({
-      label: String(y),
-      value: series[y]?.[filter.month] ?? 0,
-    }));
+    return ALL_YEARS.map((y) => ({ label: String(y), value: series[y]?.[filter.month] ?? 0 }));
   }
-
   return ALL_YEARS.map((y) => {
     const total = Object.values(series[y] ?? {}).reduce((a, b) => a + b, 0);
     return { label: String(y), value: total };

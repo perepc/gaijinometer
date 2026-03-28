@@ -1,5 +1,8 @@
 function buildSystemPrompt(context) {
-  const { topSpots, filter, mode, crowdFilter } = context;
+  const { topSpots, filter, mode, crowdFilter, lang } = context;
+  const langInstruction = lang === 'es'
+    ? 'IMPORTANT: Respond entirely in Spanish (Castilian). All text, headings, and bullet points must be in Spanish.'
+    : 'Respond in English.';
 
   const modeLabel = {
     international: 'international tourists only',
@@ -52,7 +55,8 @@ Once you have all five answers, generate a detailed day-by-day itinerary. Format
 ## Rules
 - Keep each question to 1–2 lines. Be warm and conversational.
 - When generating the itinerary, group days by region to minimise travel.
-- Do NOT include citation markers like [1] or word counts in your response.`;
+- Do NOT include citation markers like [1] or word counts in your response.
+- ${langInstruction}`;
 }
 
 export default async function handler(req, res) {

@@ -1,9 +1,69 @@
 import { useState, useCallback } from 'react';
 
+// Strip Perplexity citation markers like [1], [2], [1][2]
+function stripCitations(text) {
+  return text.replace(/\[\d+\]/g, '').replace(/\s{2,}/g, ' ');
+}
+
+// Render inline markdown: **bold**, *italic*
+function renderInline(text) {
+  const parts = [];
+  // Split on **...** and *...* patterns
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+  let last = 0;
+  let match;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(text.slice(last, match.index));
+    }
+    if (match[0].startsWith('**')) {
+      parts.push(<strong key={key++}>{match[2]}</strong>);
+    } else {
+      parts.push(<em key={key++}>{match[3]}</em>);
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function MarkdownText({ text }) {
+  const clean = stripCitations(text);
+  const lines = clean.split('\n');
+  const elements = [];
+  let listItems = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (listItems.length) {
+      elements.push(<ul key={key++}>{listItems}</ul>);
+      listItems = [];
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flushList();
+      continue;
+    }
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      const content = line.replace(/^[-•]\s*/, '');
+      listItems.push(<li key={key++}>{renderInline(content)}</li>);
+    } else {
+      flushList();
+      elements.push(<p key={key++}>{renderInline(line)}</p>);
+    }
+  }
+  flushList();
+  return <div className="ai-result-text">{elements}</div>;
+}
+
 export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);   // { text, citations }
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
   const handleAsk = useCallback(async () => {
@@ -86,11 +146,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter }) 
 
       {result && (
         <div className="ai-result">
-          <div className="ai-result-text">
-            {result.text.split('\n').map((line, i) => (
-              line.trim() ? <p key={i}>{line}</p> : <br key={i} />
-            ))}
-          </div>
+          <MarkdownText text={result.text} />
           {result.citations.length > 0 && (
             <div className="ai-citations">
               <p className="ai-citations-title">Sources</p>

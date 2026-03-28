@@ -38,9 +38,9 @@ export default function App() {
         </div>
         <div className="mode-toggle">
           {[
-            { id: 'all',           label: '🌍 Total' },
-            { id: 'international', label: '✈️ Internacional' },
-            { id: 'domestic',      label: '🏠 Doméstico' },
+            { id: 'all',           label: '🌍 All' },
+            { id: 'international', label: '✈️ International' },
+            { id: 'domestic',      label: '🏠 Domestic' },
           ].map(({ id, label }) => (
             <button
               key={id}

@@ -92,32 +92,42 @@ const P = {
  * @param {number[]} seasonality       12-element monthly pattern array
  */
 function generateVisits(annualVisitors2019, intlShare, seasonality) {
-  const baseMonthly = annualVisitors2019 / 12;
-  const result = {};
+  const intlAnnual = annualVisitors2019 * intlShare;
+  const domAnnual  = annualVisitors2019 * (1 - intlShare);
+
+  const total = {}, intl = {}, dom = {};
 
   for (const year of YEARS) {
-    result[year] = {};
-    const yearFactor = (1 - intlShare) * DOM_YEAR[year] + intlShare * INTL_YEAR[year];
+    total[year] = {}; intl[year] = {}; dom[year] = {};
 
     for (let m = 1; m <= 12; m++) {
-      // 2026: only Q1 has data (current date = March 2026)
       if (year === 2026 && m > 3) {
-        result[year][m] = 0;
+        total[year][m] = 0; intl[year][m] = 0; dom[year][m] = 0;
         continue;
       }
 
-      // Blend the location's seasonal pattern with the underlying JNTO/domestic curves
-      const intlS = INTL_SEASONAL[m - 1];
-      const domS = DOM_SEASONAL[m - 1];
-      const localS = seasonality[m - 1];
-      // Weight: 60% local pattern, 40% underlying JNTO+domestic baseline
-      const baseSeasonal = (1 - intlShare) * domS + intlShare * intlS;
-      const blended = localS * 0.6 + baseSeasonal * 0.4;
+      const localS  = seasonality[m - 1];
+      const intlS   = INTL_SEASONAL[m - 1];
+      const domS    = DOM_SEASONAL[m - 1];
 
-      result[year][m] = Math.max(0, Math.round(baseMonthly * blended * yearFactor));
+      // International: JNTO real monthly curve blended with local pattern
+      const intlSeasonal = intlS * 0.6 + localS * 0.4;
+      const intlVal = Math.max(0, Math.round(
+        (intlAnnual / 12) * intlSeasonal * INTL_YEAR[year]
+      ));
+
+      // Domestic: domestic seasonal curve blended with local pattern
+      const domSeasonal = domS * 0.6 + localS * 0.4;
+      const domVal = Math.max(0, Math.round(
+        (domAnnual / 12) * domSeasonal * DOM_YEAR[year]
+      ));
+
+      intl[year][m]  = intlVal;
+      dom[year][m]   = domVal;
+      total[year][m] = intlVal + domVal;
     }
   }
-  return result;
+  return { visits: total, intlVisits: intl, domVisits: dom };
 }
 
 // ─── SPOT DEFINITIONS ────────────────────────────────────────────────────────
@@ -131,52 +141,52 @@ export const spots = [
     id: 'shinjuku', name: 'Shinjuku', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.6938, lng: 139.7034,
     // ~35M tourist visits/year to district (JTA Tokyo report)
-    visits: generateVisits(35000, 0.22, P.TOKYO),
+    ...generateVisits(35000, 0.22, P.TOKYO),
     source: 'JTA Tokyo Tourism Report',
   },
   {
     id: 'shibuya', name: 'Shibuya Crossing', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.6595, lng: 139.7004,
-    visits: generateVisits(28000, 0.28, P.TOKYO),
+    ...generateVisits(28000, 0.28, P.TOKYO),
     source: 'JTA Tokyo Tourism Report (estimate)',
   },
   {
     id: 'asakusa', name: 'Asakusa / Senso-ji', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.7148, lng: 139.7967,
     // ~30M/year ✓ (widely cited official figure)
-    visits: generateVisits(30000, 0.25, P.CHERRY),
+    ...generateVisits(30000, 0.25, P.CHERRY),
     source: 'Taito City Tourism Report — ~30M visitors/year',
   },
   {
     id: 'akihabara', name: 'Akihabara', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.7021, lng: 139.7741,
-    visits: generateVisits(8000, 0.30, P.TOKYO),
+    ...generateVisits(8000, 0.30, P.TOKYO),
     source: 'Estimate based on foot traffic surveys',
   },
   {
     id: 'harajuku', name: 'Harajuku / Meiji Jingu', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.6763, lng: 139.6993,
     // Meiji Shrine: ~10M/year ✓
-    visits: generateVisits(12000, 0.25, P.CHERRY),
+    ...generateVisits(12000, 0.25, P.CHERRY),
     source: 'Meiji Shrine — ~10M visitors/year',
   },
   {
     id: 'disneyland', name: 'Tokyo Disney Resort', region: 'Kanto', prefecture: 'Chiba',
     lat: 35.6329, lng: 139.8804,
     // 2019: 32.5M combined (Disneyland + DisneySea) ✓ — TEA/AECOM Theme Index
-    visits: generateVisits(32500, 0.08, P.THEME),
+    ...generateVisits(32500, 0.08, P.THEME),
     source: 'TEA/AECOM Theme Index 2019 — 32.5M combined',
   },
   {
     id: 'ueno', name: 'Ueno Park', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.7141, lng: 139.7774,
-    visits: generateVisits(10000, 0.20, P.CHERRY),
+    ...generateVisits(10000, 0.20, P.CHERRY),
     source: 'Tokyo Metropolitan Government estimate',
   },
   {
     id: 'odaiba', name: 'Odaiba', region: 'Kanto', prefecture: 'Tokyo',
     lat: 35.6268, lng: 139.7765,
-    visits: generateVisits(5000, 0.18, P.TOKYO),
+    ...generateVisits(5000, 0.18, P.TOKYO),
     source: 'Estimate based on major venue attendance',
   },
 
@@ -184,33 +194,33 @@ export const spots = [
   {
     id: 'nikko', name: 'Nikko Tosho-gu', region: 'Kanto', prefecture: 'Tochigi',
     lat: 36.7548, lng: 139.6196,
-    visits: generateVisits(5000, 0.18, P.AUTUMN),
+    ...generateVisits(5000, 0.18, P.AUTUMN),
     source: 'Nikko City Tourism statistics (estimate)',
   },
   {
     id: 'hakone', name: 'Hakone', region: 'Kanto', prefecture: 'Kanagawa',
     lat: 35.2324, lng: 139.1069,
     // ~20M/year area visitors (Hakone Tourism Association reports)
-    visits: generateVisits(20000, 0.20, P.AUTUMN),
+    ...generateVisits(20000, 0.20, P.AUTUMN),
     source: 'Hakone Tourism Association — ~20M area visitors',
   },
   {
     id: 'kamakura', name: 'Kamakura', region: 'Kanto', prefecture: 'Kanagawa',
     lat: 35.3192, lng: 139.5467,
-    visits: generateVisits(20000, 0.18, P.CHERRY),
+    ...generateVisits(20000, 0.18, P.CHERRY),
     source: 'Kamakura City Tourism — ~20M visitors/year',
   },
   {
     id: 'yokohama', name: 'Yokohama Chinatown', region: 'Kanto', prefecture: 'Kanagawa',
     lat: 35.4437, lng: 139.6476,
-    visits: generateVisits(18000, 0.18, P.BALANCED),
+    ...generateVisits(18000, 0.18, P.BALANCED),
     source: 'Yokohama Tourism Bureau estimate',
   },
   {
     id: 'mt_fuji', name: 'Mt. Fuji / Kawaguchiko', region: 'Chubu', prefecture: 'Yamanashi',
     lat: 35.3606, lng: 138.7274,
     // Fuji Five Lakes area ~10M+ visitors/year
-    visits: generateVisits(10000, 0.28, P.CHERRY),
+    ...generateVisits(10000, 0.28, P.CHERRY),
     source: 'Fuji Five Lakes Tourism estimate',
   },
 
@@ -219,32 +229,32 @@ export const spots = [
     id: 'fushimi_inari', name: 'Fushimi Inari Taisha', region: 'Kansai', prefecture: 'Kyoto',
     lat: 34.9671, lng: 135.7727,
     // 2.7M+ international visitors/year ✓, total ~5-6M
-    visits: generateVisits(5500, 0.45, P.KYOTO),
+    ...generateVisits(5500, 0.45, P.KYOTO),
     source: 'JNTO / Kyoto City Tourism — 2.7M+ intl visitors',
   },
   {
     id: 'kinkakuji', name: 'Kinkaku-ji (Golden Pavilion)', region: 'Kansai', prefecture: 'Kyoto',
     lat: 35.0394, lng: 135.7292,
-    visits: generateVisits(5000, 0.42, P.KYOTO),
+    ...generateVisits(5000, 0.42, P.KYOTO),
     source: 'Kyoto City Tourism Bureau estimate',
   },
   {
     id: 'arashiyama', name: 'Arashiyama Bamboo Grove', region: 'Kansai', prefecture: 'Kyoto',
     lat: 35.0094, lng: 135.6729,
     // 2M+ international ✓, total ~4M
-    visits: generateVisits(4000, 0.45, P.KYOTO),
+    ...generateVisits(4000, 0.45, P.KYOTO),
     source: 'Kyoto City Tourism — 2M+ intl visitors/year',
   },
   {
     id: 'gion', name: 'Gion District', region: 'Kansai', prefecture: 'Kyoto',
     lat: 35.0038, lng: 135.7761,
-    visits: generateVisits(8000, 0.38, P.KYOTO),
+    ...generateVisits(8000, 0.38, P.KYOTO),
     source: 'Kyoto City Tourism Bureau estimate',
   },
   {
     id: 'kiyomizudera', name: 'Kiyomizu-dera', region: 'Kansai', prefecture: 'Kyoto',
     lat: 34.9948, lng: 135.7850,
-    visits: generateVisits(5000, 0.40, P.KYOTO),
+    ...generateVisits(5000, 0.40, P.KYOTO),
     source: 'Temple official records / Kyoto Tourism estimate',
   },
 
@@ -253,7 +263,7 @@ export const spots = [
     id: 'nara_park', name: 'Nara Park / Todai-ji', region: 'Kansai', prefecture: 'Nara',
     lat: 34.6851, lng: 135.8048,
     // Nara City: ~14M visitors/year; Todai-ji paid admissions ~1.4M
-    visits: generateVisits(14000, 0.22, P.CHERRY),
+    ...generateVisits(14000, 0.22, P.CHERRY),
     source: 'Nara City Tourism — ~14M area visitors/year',
   },
 
@@ -261,21 +271,21 @@ export const spots = [
   {
     id: 'dotonbori', name: 'Dotonbori', region: 'Kansai', prefecture: 'Osaka',
     lat: 34.6687, lng: 135.5013,
-    visits: generateVisits(18000, 0.32, P.BALANCED),
+    ...generateVisits(18000, 0.32, P.BALANCED),
     source: 'Osaka Tourism Bureau estimate',
   },
   {
     id: 'osaka_castle', name: 'Osaka Castle', region: 'Kansai', prefecture: 'Osaka',
     lat: 34.6873, lng: 135.5262,
     // ~3M paid admissions/year
-    visits: generateVisits(3000, 0.30, P.CHERRY),
+    ...generateVisits(3000, 0.30, P.CHERRY),
     source: 'Osaka Castle Museum admission records — ~3M/year',
   },
   {
     id: 'usj', name: 'Universal Studios Japan', region: 'Kansai', prefecture: 'Osaka',
     lat: 34.6654, lng: 135.4321,
     // 2019: ~14.5M ✓ — TEA/AECOM; 2023: ~16M ✓ (Nintendo World boost)
-    visits: generateVisits(14500, 0.12, P.THEME),
+    ...generateVisits(14500, 0.12, P.THEME),
     source: 'TEA/AECOM Theme Index — 14.5M (2019), 16M (2023)',
   },
 
@@ -283,7 +293,7 @@ export const spots = [
   {
     id: 'kobe', name: 'Kobe Harborland', region: 'Kansai', prefecture: 'Hyogo',
     lat: 34.6817, lng: 135.1900,
-    visits: generateVisits(8000, 0.15, P.BALANCED),
+    ...generateVisits(8000, 0.15, P.BALANCED),
     source: 'Kobe City Tourism estimate',
   },
 
@@ -292,20 +302,20 @@ export const spots = [
     id: 'hiroshima_peace', name: 'Hiroshima Peace Memorial', region: 'Chugoku', prefecture: 'Hiroshima',
     lat: 34.3955, lng: 132.4534,
     // Peace Memorial Museum: ~1.77M visitors/year (paid)
-    visits: generateVisits(4000, 0.28, P.BALANCED),
+    ...generateVisits(4000, 0.28, P.BALANCED),
     source: 'Peace Memorial Museum annual report — ~1.77M paid/year; area total ~4M',
   },
   {
     id: 'miyajima', name: 'Miyajima / Itsukushima Shrine', region: 'Chugoku', prefecture: 'Hiroshima',
     lat: 34.2955, lng: 132.3197,
-    visits: generateVisits(4000, 0.30, P.AUTUMN),
+    ...generateVisits(4000, 0.30, P.AUTUMN),
     source: 'Hiroshima Prefecture Tourism estimate — ~4M/year',
   },
   {
     id: 'himeji', name: 'Himeji Castle', region: 'Kansai', prefecture: 'Hyogo',
     lat: 34.8394, lng: 134.6939,
     // ~1.1M paid admissions/year
-    visits: generateVisits(1100, 0.22, P.CHERRY),
+    ...generateVisits(1100, 0.22, P.CHERRY),
     source: 'Himeji Castle official records — ~1.1M/year',
   },
 
@@ -314,21 +324,21 @@ export const spots = [
     id: 'nagoya_castle', name: 'Nagoya Castle', region: 'Chubu', prefecture: 'Aichi',
     lat: 35.1853, lng: 136.8997,
     // ~2M visitors/year (Nagoya Castle + surrounding area)
-    visits: generateVisits(2000, 0.12, P.CHERRY),
+    ...generateVisits(2000, 0.12, P.CHERRY),
     source: 'Nagoya City Tourism — ~2M visitors/year',
   },
   {
     id: 'shirakawago', name: 'Shirakawa-go', region: 'Chubu', prefecture: 'Gifu',
     lat: 36.2571, lng: 136.9007,
     // ~1.8M/year (UNESCO village — heavily visited)
-    visits: generateVisits(1800, 0.28, P.SKI),
+    ...generateVisits(1800, 0.28, P.SKI),
     source: 'Shirakawa Village Tourism — ~1.8M/year',
   },
   {
     id: 'kanazawa', name: 'Kanazawa Kenroku-en', region: 'Chubu', prefecture: 'Ishikawa',
     lat: 36.5614, lng: 136.6562,
     // ~1.7M paid admissions + surrounding area ~7M city tourists
-    visits: generateVisits(1700, 0.18, P.CHERRY),
+    ...generateVisits(1700, 0.18, P.CHERRY),
     source: 'Kenroku-en paid admissions — ~1.7M/year',
   },
 
@@ -336,13 +346,13 @@ export const spots = [
   {
     id: 'matsushima', name: 'Matsushima Bay', region: 'Tohoku', prefecture: 'Miyagi',
     lat: 38.3726, lng: 141.0674,
-    visits: generateVisits(5000, 0.08, P.AUTUMN),
+    ...generateVisits(5000, 0.08, P.AUTUMN),
     source: 'Matsushima Tourism estimate — ~5M area visitors',
   },
   {
     id: 'sendai', name: 'Sendai (Tanabata / Zuihoden)', region: 'Tohoku', prefecture: 'Miyagi',
     lat: 38.2682, lng: 140.8694,
-    visits: generateVisits(3000, 0.06, P.BALANCED),
+    ...generateVisits(3000, 0.06, P.BALANCED),
     source: 'Sendai City Tourism estimate',
   },
 
@@ -351,26 +361,26 @@ export const spots = [
     id: 'fukuoka', name: 'Fukuoka Canal City', region: 'Kyushu', prefecture: 'Fukuoka',
     lat: 33.5894, lng: 130.4133,
     // Canal City claims ~23M; more conservative tourist-specific estimate ~10M
-    visits: generateVisits(10000, 0.15, P.BALANCED),
+    ...generateVisits(10000, 0.15, P.BALANCED),
     source: 'Canal City Hakata (conservative tourist estimate)',
   },
   {
     id: 'nagasaki', name: 'Nagasaki Glover Garden', region: 'Kyushu', prefecture: 'Nagasaki',
     lat: 32.7349, lng: 129.8680,
     // ~1.5M paid admissions
-    visits: generateVisits(1500, 0.15, P.BALANCED),
+    ...generateVisits(1500, 0.15, P.BALANCED),
     source: 'Glover Garden attendance records — ~1.5M/year',
   },
   {
     id: 'beppu', name: 'Beppu Onsen / Hells', region: 'Kyushu', prefecture: 'Oita',
     lat: 33.2846, lng: 131.4914,
-    visits: generateVisits(1000, 0.12, P.ONSEN),
+    ...generateVisits(1000, 0.12, P.ONSEN),
     source: 'Beppu City Tourism estimate',
   },
   {
     id: 'yakushima', name: 'Yakushima Forest', region: 'Kyushu', prefecture: 'Kagoshima',
     lat: 30.3595, lng: 130.5506,
-    visits: generateVisits(200, 0.15, P.FLOWER),
+    ...generateVisits(200, 0.15, P.FLOWER),
     source: 'Yakushima Tourist Association — ~200k/year',
   },
 
@@ -379,20 +389,20 @@ export const spots = [
     id: 'shuri_castle', name: 'Shuri Castle', region: 'Okinawa', prefecture: 'Okinawa',
     lat: 26.2172, lng: 127.7197,
     // Pre-fire (2018): ~900k paid; fire Oct 2019 → reduced. Using pre-fire figure
-    visits: generateVisits(900, 0.18, P.OKINAWA),
+    ...generateVisits(900, 0.18, P.OKINAWA),
     source: 'Shuri Castle paid admissions — ~900k/year (pre-2019 fire)',
   },
   {
     id: 'churaumi', name: 'Churaumi Aquarium', region: 'Okinawa', prefecture: 'Okinawa',
     lat: 26.6936, lng: 127.8783,
     // ~1.3M paid admissions/year ✓
-    visits: generateVisits(1300, 0.15, P.OKINAWA),
+    ...generateVisits(1300, 0.15, P.OKINAWA),
     source: 'Okinawa Churaumi Aquarium — ~1.3M/year',
   },
   {
     id: 'kerama', name: 'Kerama Islands', region: 'Okinawa', prefecture: 'Okinawa',
     lat: 26.2125, lng: 127.3075,
-    visits: generateVisits(300, 0.20, P.OKINAWA),
+    ...generateVisits(300, 0.20, P.OKINAWA),
     source: 'Zamami Village Tourism estimate',
   },
 
@@ -401,27 +411,27 @@ export const spots = [
     id: 'sapporo', name: 'Sapporo Snow Festival / Odori', region: 'Hokkaido', prefecture: 'Hokkaido',
     lat: 43.0618, lng: 141.3545,
     // Sapporo Snow Festival alone: ~2M visitors; city total ~15M
-    visits: generateVisits(15000, 0.22, P.SKI),
+    ...generateVisits(15000, 0.22, P.SKI),
     source: 'Sapporo City Tourism — Snow Festival 2M/year; city 15M',
   },
   {
     id: 'otaru', name: 'Otaru Canal', region: 'Hokkaido', prefecture: 'Hokkaido',
     lat: 43.1907, lng: 140.9947,
-    visits: generateVisits(8000, 0.18, P.SKI),
+    ...generateVisits(8000, 0.18, P.SKI),
     source: 'Otaru City Tourism estimate',
   },
   {
     id: 'furano', name: 'Furano Lavender Fields', region: 'Hokkaido', prefecture: 'Hokkaido',
     lat: 43.3487, lng: 142.3833,
     // Farm Tomita alone ~1.5M/year in summer; area ~3M
-    visits: generateVisits(3000, 0.22, P.FLOWER),
+    ...generateVisits(3000, 0.22, P.FLOWER),
     source: 'Farm Tomita + Furano Tourism — ~3M summer visitors',
   },
   {
     id: 'niseko', name: 'Niseko Ski Resort', region: 'Hokkaido', prefecture: 'Hokkaido',
     lat: 42.8053, lng: 140.6868,
     // ~1M skier visits/year; ~40% international (famous among Australians/Asians)
-    visits: generateVisits(1000, 0.40, P.SKI),
+    ...generateVisits(1000, 0.40, P.SKI),
     source: 'Niseko Tourism — ~1M skier visits, high intl share',
   },
 ];
@@ -443,10 +453,16 @@ export const DATA_SOURCES = [
   { label: 'JTB Tourism Research', url: 'https://www.tourism.jp/en/tourism-database/stats/inbound/' },
 ];
 
-export function filterSpots(spots, { year, month, startDate, endDate }) {
+// mode: 'all' | 'international' | 'domestic'
+export function filterSpots(spots, { year, month, startDate, endDate }, mode = 'all') {
+  const seriesKey = mode === 'international' ? 'intlVisits'
+                  : mode === 'domestic'      ? 'domVisits'
+                  : 'visits';
+
   const result = new Map();
 
   spots.forEach((spot) => {
+    const series = spot[seriesKey];
     let total = 0;
 
     if (startDate && endDate) {
@@ -455,18 +471,18 @@ export function filterSpots(spots, { year, month, startDate, endDate }) {
       for (const y of ALL_YEARS) {
         for (let m = 1; m <= 12; m++) {
           const d = new Date(y, m - 1, 1);
-          if (d >= start && d <= end) total += spot.visits[y]?.[m] ?? 0;
+          if (d >= start && d <= end) total += series[y]?.[m] ?? 0;
         }
       }
     } else if (year && month) {
-      total = spot.visits[year]?.[month] ?? 0;
+      total = series[year]?.[month] ?? 0;
     } else if (year) {
-      for (let m = 1; m <= 12; m++) total += spot.visits[year]?.[m] ?? 0;
+      for (let m = 1; m <= 12; m++) total += series[year]?.[m] ?? 0;
     } else if (month) {
-      for (const y of ALL_YEARS) total += spot.visits[y]?.[month] ?? 0;
+      for (const y of ALL_YEARS) total += series[y]?.[month] ?? 0;
     } else {
       for (const y of ALL_YEARS)
-        for (let m = 1; m <= 12; m++) total += spot.visits[y]?.[m] ?? 0;
+        for (let m = 1; m <= 12; m++) total += series[y]?.[m] ?? 0;
     }
 
     result.set(spot.id, total);

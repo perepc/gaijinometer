@@ -12,8 +12,9 @@ export default function App() {
   const [filter, setFilter] = useState(INITIAL_FILTER);
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [sidebarTab, setSidebarTab] = useState('filter');
+  const [mode, setMode] = useState('all'); // 'all' | 'international' | 'domestic'
 
-  const filteredSpots = useMemo(() => filterSpots(spots, filter), [filter]);
+  const filteredSpots = useMemo(() => filterSpots(spots, filter, mode), [filter, mode]);
 
   const handleSpotClick = useCallback((spot) => {
     setSelectedSpot((prev) => (prev?.id === spot.id ? null : spot));
@@ -35,6 +36,22 @@ export default function App() {
             <p className="subtitle">Japan Tourism Heatmap</p>
           </div>
         </div>
+        <div className="mode-toggle">
+          {[
+            { id: 'all',           label: '🌍 Total' },
+            { id: 'international', label: '✈️ Internacional' },
+            { id: 'domestic',      label: '🏠 Doméstico' },
+          ].map(({ id, label }) => (
+            <button
+              key={id}
+              className={`mode-toggle-btn ${mode === id ? 'active' : ''}`}
+              onClick={() => setMode(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="header-stats">
           <div className="stat">
             <span className="stat-value">{filteredSpots.length}</span>
@@ -81,7 +98,7 @@ export default function App() {
             )}
           </div>
 
-          <SpotInfo spot={enrichedSelected} filter={filter} />
+          <SpotInfo spot={enrichedSelected} filter={filter} mode={mode} />
         </aside>
 
         <main className="map-container">

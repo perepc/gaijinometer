@@ -1,13 +1,16 @@
 import { ALL_YEARS, MONTH_NAMES } from '../data/japanSpots';
 
-export default function SpotInfo({ spot, filter }) {
+export default function SpotInfo({ spot, filter, mode }) {
   if (!spot) return (
     <div className="spot-info empty">
       <p>Click a marker on the map to see details</p>
     </div>
   );
 
-  const chartData = buildChartData(spot, filter);
+  const seriesKey = mode === 'international' ? 'intlVisits'
+                  : mode === 'domestic'      ? 'domVisits'
+                  : 'visits';
+  const chartData = buildChartData(spot[seriesKey], filter);
   const maxVal = Math.max(...chartData.map((d) => d.value), 1);
 
   return (
@@ -46,9 +49,8 @@ export default function SpotInfo({ spot, filter }) {
   );
 }
 
-function buildChartData(spot, filter) {
+function buildChartData(series, filter) {
   if (filter.startDate && filter.endDate) {
-    // Group by year-month in range
     const items = [];
     const start = new Date(filter.startDate);
     const end = new Date(filter.endDate);
@@ -56,7 +58,7 @@ function buildChartData(spot, filter) {
       for (let m = 1; m <= 12; m++) {
         const d = new Date(y, m - 1, 1);
         if (d >= start && d <= end) {
-          items.push({ label: `${MONTH_NAMES[m - 1]}'${String(y).slice(2)}`, value: spot.visits[y]?.[m] ?? 0 });
+          items.push({ label: `${MONTH_NAMES[m - 1]}'${String(y).slice(2)}`, value: series[y]?.[m] ?? 0 });
         }
       }
     }
@@ -64,26 +66,25 @@ function buildChartData(spot, filter) {
   }
 
   if (filter.year && filter.month) {
-    return [{ label: `${MONTH_NAMES[filter.month - 1]} ${filter.year}`, value: spot.visits[filter.year]?.[filter.month] ?? 0 }];
+    return [{ label: `${MONTH_NAMES[filter.month - 1]} ${filter.year}`, value: series[filter.year]?.[filter.month] ?? 0 }];
   }
 
   if (filter.year) {
     return MONTH_NAMES.map((name, i) => ({
       label: name,
-      value: spot.visits[filter.year]?.[i + 1] ?? 0,
+      value: series[filter.year]?.[i + 1] ?? 0,
     }));
   }
 
   if (filter.month) {
     return ALL_YEARS.map((y) => ({
       label: String(y),
-      value: spot.visits[y]?.[filter.month] ?? 0,
+      value: series[y]?.[filter.month] ?? 0,
     }));
   }
 
-  // All time: by year
   return ALL_YEARS.map((y) => {
-    const total = Object.values(spot.visits[y] ?? {}).reduce((a, b) => a + b, 0);
+    const total = Object.values(series[y] ?? {}).reduce((a, b) => a + b, 0);
     return { label: String(y), value: total };
   });
 }

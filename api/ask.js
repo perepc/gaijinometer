@@ -82,7 +82,9 @@ export default async function handler(req, res) {
         model: 'sonar',
         messages: [
           { role: 'system', content: buildSystemPrompt(context) },
-          ...messages,
+          ...(messages.length === 0
+            ? [{ role: 'user', content: 'Hello, I want to plan a trip to Japan.' }]
+            : messages),
         ],
         max_tokens: 1000,
         temperature: 0.7,

@@ -3,7 +3,7 @@ import HeatMap from './components/HeatMap';
 import DateFilter from './components/DateFilter';
 import SpotInfo from './components/SpotInfo';
 import TopList from './components/TopList';
-import { spots, filterSpots } from './data/japanSpots';
+import { spots, filterSpots, DATA_SOURCES } from './data/japanSpots';
 import './App.css';
 
 const INITIAL_FILTER = { year: null, month: null, startDate: null, endDate: null };
@@ -94,6 +94,12 @@ export default function App() {
             <span className="legend-label">Low</span>
             <div className="legend-gradient" />
             <span className="legend-label">High</span>
+          </div>
+          <div className="map-sources">
+            <span className="sources-label">Sources:</span>
+            {DATA_SOURCES.map((s) => (
+              <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer">{s.label}</a>
+            ))}
           </div>
         </main>
       </div>

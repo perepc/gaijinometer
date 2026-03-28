@@ -39,6 +39,9 @@ export default function SpotInfo({ spot, filter }) {
           </div>
         ))}
       </div>
+      {spot.source && (
+        <p className="spot-source">📊 {spot.source}</p>
+      )}
     </div>
   );
 }

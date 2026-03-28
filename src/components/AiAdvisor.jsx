@@ -6,10 +6,17 @@ function stripArtifacts(text) {
     .replace(/\[[^\]]{1,40}\]/g, '')
     .replace(/\(\d+\s*palabras?\)/gi, '')
     .replace(/\(\d+\s*words?\)/gi, '')
-    // Ensure headers (###, ##, #) always start on their own line
+    // Ensure headers always start on their own line
     .replace(/([^\n])(#{1,3} )/g, '$1\n\n$2')
     // Ensure bullet points always start on their own line
     .replace(/([^\n])(- )/g, '$1\n$2')
+    // Strip unmatched ** (odd count per line → remove leading **)
+    .split('\n')
+    .map((line) => {
+      const count = (line.match(/\*\*/g) ?? []).length;
+      return count % 2 !== 0 ? line.replace(/\*\*/, '') : line;
+    })
+    .join('\n')
     .trim();
 }
 

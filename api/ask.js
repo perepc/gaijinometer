@@ -66,7 +66,10 @@ export default async function handler(req, res) {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'PERPLEXITY_API_KEY not configured' });
 
-  const { messages = [], context = {} } = req.body;
+  let body = req.body;
+  // Vercel may pass body as string if content-type wasn't detected
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+  const { messages = [], context = {} } = body ?? {};
 
   try {
     const pplxRes = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -87,7 +90,10 @@ export default async function handler(req, res) {
     });
 
     const data = await pplxRes.json();
-    if (!pplxRes.ok) return res.status(pplxRes.status).json({ error: data });
+    if (!pplxRes.ok) {
+      const msg = data?.error?.message ?? data?.detail ?? JSON.stringify(data);
+      return res.status(pplxRes.status).json({ error: msg });
+    }
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: err.message });

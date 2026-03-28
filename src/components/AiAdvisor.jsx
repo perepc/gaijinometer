@@ -58,8 +58,12 @@ async function callApi(messages, context) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, context }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  let data;
+  try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status} — invalid response`); }
+  if (!res.ok) {
+    const msg = typeof data?.error === 'string' ? data.error : JSON.stringify(data?.error ?? data);
+    throw new Error(msg);
+  }
   return data.choices?.[0]?.message?.content ?? '';
 }
 

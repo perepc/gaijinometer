@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import HeatMap from './components/HeatMap';
 import DateFilter from './components/DateFilter';
+import CrowdFilter from './components/CrowdFilter';
 import SpotInfo from './components/SpotInfo';
 import TopList from './components/TopList';
-import { spots, filterSpots, DATA_SOURCES } from './data/japanSpots';
+import { spots, filterSpots, DATA_SOURCES, CROWD_CATEGORIES } from './data/japanSpots';
 import './App.css';
 
 const INITIAL_FILTER = { year: null, month: null, startDate: null, endDate: null };
@@ -12,9 +13,13 @@ export default function App() {
   const [filter, setFilter] = useState(INITIAL_FILTER);
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [sidebarTab, setSidebarTab] = useState('filter');
-  const [mode, setMode] = useState('all'); // 'all' | 'international' | 'domestic'
+  const [mode, setMode] = useState('all');         // 'all' | 'international' | 'domestic'
+  const [crowdFilter, setCrowdFilter] = useState('all'); // 'all' | 'local' | 'mixed' | 'tourist'
 
-  const filteredSpots = useMemo(() => filterSpots(spots, filter, mode), [filter, mode]);
+  const filteredSpots = useMemo(
+    () => filterSpots(spots, filter, mode, crowdFilter),
+    [filter, mode, crowdFilter]
+  );
 
   const handleSpotClick = useCallback((spot) => {
     setSelectedSpot((prev) => (prev?.id === spot.id ? null : spot));
@@ -87,7 +92,11 @@ export default function App() {
 
           <div className="sidebar-content">
             {sidebarTab === 'filter' && (
-              <DateFilter filter={filter} onChange={setFilter} />
+              <>
+                <DateFilter filter={filter} onChange={setFilter} />
+                <div className="sidebar-divider" />
+                <CrowdFilter value={crowdFilter} onChange={setCrowdFilter} />
+              </>
             )}
             {sidebarTab === 'top' && (
               <TopList
@@ -107,6 +116,15 @@ export default function App() {
             selectedSpot={enrichedSelected}
             onSpotClick={handleSpotClick}
           />
+          <div className="map-category-legend">
+            {Object.entries(CROWD_CATEGORIES).map(([id, { label, color }]) => (
+              <div key={id} className="cat-legend-item">
+                <span className="cat-dot" style={{ background: color }} />
+                {label}
+              </div>
+            ))}
+          </div>
+
           <div className="map-legend">
             <span className="legend-label">Low</span>
             <div className="legend-gradient" />

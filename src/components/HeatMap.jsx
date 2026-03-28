@@ -2,6 +2,11 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
+import { CROWD_CATEGORIES } from '../data/japanSpots';
+
+const CATEGORY_COLOR = Object.fromEntries(
+  Object.entries(CROWD_CATEGORIES).map(([k, v]) => [k, v.color])
+);
 
 const JAPAN_CENTER = [36.5, 137.5];
 const DEFAULT_ZOOM = 5;
@@ -71,22 +76,24 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
       const relSize = 6 + (spot.intensity * 14);
       const isSelected = selectedSpot?.id === spot.id;
 
-      const circleColor = intensityToColor(spot.intensity);
+      const categoryColor = CATEGORY_COLOR[spot.crowdCategory] ?? intensityToColor(spot.intensity);
 
       const marker = L.circleMarker([spot.lat, spot.lng], {
         radius: isSelected ? relSize + 4 : relSize,
-        fillColor: circleColor,
-        color: isSelected ? '#ffffff' : 'rgba(0,0,0,0.3)',
-        weight: isSelected ? 2.5 : 1,
-        fillOpacity: isSelected ? 0.95 : 0.75,
+        fillColor: categoryColor,
+        color: isSelected ? '#ffffff' : 'rgba(0,0,0,0.4)',
+        weight: isSelected ? 2.5 : 1.5,
+        fillOpacity: isSelected ? 0.95 : 0.80,
       });
 
       const formatted = spot.totalVisits.toLocaleString();
+      const catInfo = CROWD_CATEGORIES[spot.crowdCategory];
       marker.bindTooltip(
         `<div class="spot-tooltip">
           <strong>${spot.name}</strong>
           <span>${spot.prefecture}</span>
           <span class="visits">${formatted}k visitors</span>
+          <span class="crowd-tag" style="color:${catInfo.color}">${catInfo.label}</span>
         </div>`,
         { direction: 'top', offset: [0, -relSize], className: 'heat-tooltip' }
       );

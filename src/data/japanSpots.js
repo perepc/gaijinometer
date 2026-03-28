@@ -127,7 +127,7 @@ function generateVisits(annualVisitors2019, intlShare, seasonality) {
       total[year][m] = intlVal + domVal;
     }
   }
-  return { visits: total, intlVisits: intl, domVisits: dom };
+  return { visits: total, intlVisits: intl, domVisits: dom, intlShare };
 }
 
 // ─── SPOT DEFINITIONS ────────────────────────────────────────────────────────
@@ -446,6 +446,20 @@ export const FULL_MONTH_NAMES = [
 export const ALL_YEARS = YEARS;
 export const REGIONS = [...new Set(spots.map((s) => s.region))].sort();
 
+// ─── CROWD CATEGORIES ─────────────────────────────────────────────────────────
+// Based on intlShare (fraction of international tourists)
+export const CROWD_CATEGORIES = {
+  local:   { label: '🏘️ Local Gem',     color: '#4ade80', threshold: [0,    0.15] },
+  mixed:   { label: '⚖️ Mixed',          color: '#facc15', threshold: [0.15, 0.35] },
+  tourist: { label: '🌏 Tourist Hotspot', color: '#f87171', threshold: [0.35, 1]   },
+};
+
+export function getCrowdCategory(intlShare) {
+  if (intlShare < 0.15) return 'local';
+  if (intlShare < 0.35) return 'mixed';
+  return 'tourist';
+}
+
 export const DATA_SOURCES = [
   { label: 'JNTO Monthly Arrivals', url: 'https://statistics.jnto.go.jp/en/graph/' },
   { label: 'TEA/AECOM Theme Index', url: 'https://teaconnect.org/resources/tea-aecom-theme-index/' },
@@ -454,14 +468,19 @@ export const DATA_SOURCES = [
 ];
 
 // mode: 'all' | 'international' | 'domestic'
-export function filterSpots(spots, { year, month, startDate, endDate }, mode = 'all') {
+// crowdFilter: 'all' | 'local' | 'mixed' | 'tourist'
+export function filterSpots(spots, { year, month, startDate, endDate }, mode = 'all', crowdFilter = 'all') {
   const seriesKey = mode === 'international' ? 'intlVisits'
                   : mode === 'domestic'      ? 'domVisits'
                   : 'visits';
 
+  const activeSpots = crowdFilter === 'all'
+    ? spots
+    : spots.filter((s) => getCrowdCategory(s.intlShare) === crowdFilter);
+
   const result = new Map();
 
-  spots.forEach((spot) => {
+  activeSpots.forEach((spot) => {
     const series = spot[seriesKey];
     let total = 0;
 
@@ -491,8 +510,9 @@ export function filterSpots(spots, { year, month, startDate, endDate }, mode = '
   const values = [...result.values()];
   const max = Math.max(...values, 1);
 
-  return spots.map((spot) => ({
+  return activeSpots.map((spot) => ({
     ...spot,
+    crowdCategory: getCrowdCategory(spot.intlShare),
     totalVisits: result.get(spot.id),
     intensity: result.get(spot.id) / max,
   }));

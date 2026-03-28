@@ -559,6 +559,113 @@ select:focus, input:focus {
 
 .map-sources a:hover { opacity: 1; }
 
+/* ── CROWD FILTER ────────────────────────────────── */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.crowd-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crowd-filter-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.crowd-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.crowd-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.crowd-btn:hover {
+  color: var(--text);
+  border-color: #3a4060;
+}
+
+.crowd-btn.active {
+  background: rgba(255,255,255,0.04);
+  font-weight: 700;
+}
+
+.crowd-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.crowd-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+/* ── TOOLTIP CROWD TAG ───────────────────────────── */
+.crowd-tag {
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* ── MAP CATEGORY LEGEND ─────────────────────────── */
+.map-category-legend {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: rgba(15, 17, 23, 0.88);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cat-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.cat-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .spot-source {
   font-size: 10px;
   color: var(--text-dim);

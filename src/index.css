@@ -494,10 +494,6 @@ select:focus, input:focus {
   background: #1a1f2e;
 }
 
-/* Dark tile filter */
-.map-container .leaflet-tile-pane {
-  filter: brightness(0.5) saturate(0.4) hue-rotate(200deg);
-}
 
 .map-legend {
   position: absolute;

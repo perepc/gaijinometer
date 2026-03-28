@@ -22,10 +22,10 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 18,
+    L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>',
+      subdomains: ['0', '1', '2', '3'],
+      maxZoom: 20,
     }).addTo(mapRef.current);
 
     heatLayerRef.current = L.heatLayer([], {

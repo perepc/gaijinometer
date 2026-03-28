@@ -40,7 +40,7 @@ function MarkdownText({ text }) {
 
   for (const raw of lines) {
     const line = raw.trim();
-    if (!line) { flushList(); continue; }
+    if (!line || /^#{1,3}$/.test(line)) { flushList(); continue; }
     if (/^#{1,3}\s/.test(line)) {
       flushList();
       elements.push(<p key={key++} className="ai-msg-heading">{renderInline(line.replace(/^#{1,3}\s/, ''))}</p>);

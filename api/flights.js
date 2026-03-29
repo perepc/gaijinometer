@@ -45,8 +45,11 @@ async function searchOffers(apiKey, { origin, destination, date, returnDate, pas
   });
 
   const data = await res.json();
+  console.log(`[flights] ${origin}→${destination} status=${res.status} offers=${data?.data?.offers?.length ?? 'n/a'} keys=${Object.keys(data?.data ?? {}).join(',')}`);
   if (!res.ok) throw new Error(data?.errors?.[0]?.message ?? JSON.stringify(data));
-  return (data?.data?.offers ?? []).map((o) => normalizeOffer(o, origin, destination, returnDate));
+  const offers = data?.data?.offers ?? [];
+  if (offers.length === 0) console.log(`[flights] empty response sample:`, JSON.stringify(data).slice(0, 300));
+  return offers.map((o) => normalizeOffer(o, origin, destination, returnDate));
 }
 
 export default async function handler(req, res) {
@@ -77,6 +80,9 @@ export default async function handler(req, res) {
       const results = await Promise.allSettled(
         JAPAN_AIRPORTS.map((dest) => searchOffers(apiKey, { ...searchArgs, destination: dest }))
       );
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') console.log(`[flights] ${JAPAN_AIRPORTS[i]} failed:`, r.reason?.message);
+      });
       allOffers = results
         .filter((r) => r.status === 'fulfilled')
         .flatMap((r) => r.value);

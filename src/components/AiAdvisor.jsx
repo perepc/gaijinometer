@@ -1,16 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLang } from '../i18n.jsx';
 
+// ── Markdown helpers ────────────────────────────────────────────────────────
+
+const FLIGHT_MARKER_RE = /\[SEARCH_FLIGHTS:(\{[^}]+\})\]/;
+
 function stripArtifacts(text) {
   return text
     .replace(/\[[^\]]{1,40}\]/g, '')
     .replace(/\(\d+\s*palabras?\)/gi, '')
     .replace(/\(\d+\s*words?\)/gi, '')
-    // Ensure headers always start on their own line
     .replace(/([^\n])(#{1,3} )/g, '$1\n\n$2')
-    // Ensure bullet points always start on their own line
     .replace(/([^\n])(- )/g, '$1\n$2')
-    // Strip unmatched ** (odd count per line → remove leading **)
     .split('\n')
     .map((line) => {
       const count = (line.match(/\*\*/g) ?? []).length;
@@ -20,7 +21,6 @@ function stripArtifacts(text) {
     .trim();
 }
 
-// Render inline markdown: **bold**, *italic*
 function renderInline(text) {
   const parts = [];
   const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
@@ -63,6 +63,66 @@ function MarkdownText({ text }) {
   return <>{elements}</>;
 }
 
+// ── Inline flight results card ──────────────────────────────────────────────
+
+function formatDuration(iso) {
+  if (!iso) return '';
+  const h = iso.match(/(\d+)H/)?.[1];
+  const m = iso.match(/(\d+)M/)?.[1];
+  return [h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ');
+}
+
+function formatTime(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function FlightResultsCard({ data }) {
+  const { t } = useLang();
+  if (data.error) return <p className="ai-error">{data.error}</p>;
+  if (!data.offers?.length) return <p className="ai-flight-empty">No flights found.</p>;
+
+  return (
+    <div className="ai-flight-results">
+      <p className="ai-flight-results-title">
+        ✈️ {t('flightResults', data.offers.length, data.total)}
+      </p>
+      {data.offers.map((o) => (
+        <div key={o.id} className="ai-flight-card">
+          <div className="ai-flight-top">
+            <span className="ai-flight-airline">
+              {o.airlineLogo && <img src={o.airlineLogo} alt={o.airline} className="ai-airline-logo" />}
+              {o.airline}
+            </span>
+            <span className="ai-flight-price">
+              {o.price.toLocaleString()} {o.currency}
+            </span>
+          </div>
+          <div className="ai-flight-route">
+            <span className="ai-flight-endpoint">
+              <span className="ai-flight-iata">{o.originCode}</span>
+              <span className="ai-flight-dt">{formatTime(o.departure)}</span>
+            </span>
+            <span className="ai-flight-mid">
+              <span className="ai-flight-dur">{formatDuration(o.duration)}</span>
+              <span className="ai-flight-line" />
+              <span className="ai-flight-stops">
+                {o.stops === 0 ? t('flightDirect') : `${o.stops} ${t('flightStop', o.stops)}`}
+              </span>
+            </span>
+            <span className="ai-flight-endpoint ai-flight-endpoint--right">
+              <span className="ai-flight-iata">{o.destinationCode}</span>
+              <span className="ai-flight-dt">{formatTime(o.arrival)}</span>
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── API calls ───────────────────────────────────────────────────────────────
+
 async function callApi(messages, context) {
   const res = await fetch('/api/ask', {
     method: 'POST',
@@ -78,9 +138,25 @@ async function callApi(messages, context) {
   return data.choices?.[0]?.message?.content ?? '';
 }
 
+async function callFlights(params) {
+  const res = await fetch('/api/flights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...params, destination: 'JAPAN' }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  return data;
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
+
+const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
+
 export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, lang }) {
   const { t } = useLang();
-  const [messages, setMessages] = useState([]);   // {role, content}[]
+  // messages can be {role, content} or {role:'flights', data:{...}}
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -100,11 +176,48 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const appendAssistant = (content) => {
-    setMessages((prev) => [...prev, { role: 'assistant', content }]);
-  };
+  // After receiving an AI reply, detect flight search marker and trigger search
+  async function processReply(reply, prevMessages) {
+    const markerMatch = reply.match(FLIGHT_MARKER_RE);
 
-  const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
+    if (markerMatch) {
+      // Strip marker from displayed text
+      const cleanReply = reply.replace(FLIGHT_MARKER_RE, '').trim();
+      const assistantMsg = { role: 'assistant', content: cleanReply };
+      // Add assistant message (without marker) to conversation history too
+      const updatedMessages = [...prevMessages, { role: 'assistant', content: reply }];
+
+      let flightParams;
+      try { flightParams = JSON.parse(markerMatch[1]); } catch { flightParams = null; }
+
+      setMessages((prev) => [...prev, assistantMsg, { role: 'flights', data: { loading: true } }]);
+
+      if (flightParams) {
+        try {
+          const data = await callFlights(flightParams);
+          setMessages((prev) => {
+            const next = [...prev];
+            const idx = next.findLastIndex((m) => m.role === 'flights');
+            if (idx !== -1) next[idx] = { role: 'flights', data };
+            return next;
+          });
+        } catch (err) {
+          setMessages((prev) => {
+            const next = [...prev];
+            const idx = next.findLastIndex((m) => m.role === 'flights');
+            if (idx !== -1) next[idx] = { role: 'flights', data: { error: err.message } };
+            return next;
+          });
+        }
+      }
+      return updatedMessages;
+    }
+
+    // No marker — normal assistant message
+    const assistantMsg = { role: 'assistant', content: reply };
+    setMessages((prev) => [...prev, assistantMsg]);
+    return [...prevMessages, assistantMsg];
+  }
 
   const handleStart = useCallback(async () => {
     setStarted(true);
@@ -113,7 +226,6 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     setLoading(true);
     try {
       const reply = await callApi([], context);
-      // Store trigger msg + reply so future turns alternate user/assistant correctly
       setMessages([TRIGGER, { role: 'assistant', content: reply }]);
     } catch (err) {
       setError(err.message);
@@ -126,14 +238,18 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const newMessages = [...messages, { role: 'user', content: text }];
-    setMessages(newMessages);
+
+    // Build API messages (only text messages, not flight cards)
+    const apiMessages = [...messages, { role: 'user', content: text }]
+      .filter((m) => m.role !== 'flights');
+
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     setError(null);
     setLoading(true);
     try {
-      const reply = await callApi(newMessages, context);
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      const reply = await callApi(apiMessages, context);
+      await processReply(reply, apiMessages);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -147,9 +263,10 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
   const modeLabel = { all: t('aiAllVisitors'), international: t('aiIntlOnly'), domestic: t('aiDomOnly') }[mode];
   const crowdLabel = { all: t('aiAllSpots'), local: t('aiLocalGems'), mixed: t('aiMixed'), tourist: t('aiTourist') }[crowdFilter];
 
+  const visibleMessages = messages.filter((m) => m.role !== 'user' || m.content !== TRIGGER.content);
+
   return (
     <div className="ai-advisor">
-      {/* Header */}
       <div className="ai-header">
         <span className="ai-icon">🤖</span>
         <div>
@@ -161,7 +278,6 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
         )}
       </div>
 
-      {/* Context pills */}
       <div className="ai-context">
         <p className="ai-context-title">{t('aiContext')}</p>
         <div className="ai-context-pills">
@@ -171,27 +287,34 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
         </div>
       </div>
 
-      {/* Start screen */}
       {!started && (
         <div className="ai-start">
-          <p className="ai-start-desc">
-            {t('aiStartDesc')}
-          </p>
+          <p className="ai-start-desc">{t('aiStartDesc')}</p>
           <button className="ai-ask-btn" onClick={handleStart} disabled={filteredSpots.length === 0}>
             {t('aiStartBtn')}
           </button>
         </div>
       )}
 
-      {/* Chat messages */}
       {started && (
         <div className="ai-chat">
           <div className="ai-messages">
-            {messages.filter((msg) => msg.content !== TRIGGER.content).map((msg, i) => (
-              <div key={i} className={`ai-bubble ai-bubble--${msg.role}`}>
-                <MarkdownText text={msg.content} />
-              </div>
-            ))}
+            {visibleMessages.map((msg, i) => {
+              if (msg.role === 'flights') {
+                return (
+                  <div key={i} className="ai-bubble ai-bubble--assistant ai-bubble--flights">
+                    {msg.data?.loading
+                      ? <span className="ai-typing"><span/><span/><span/></span>
+                      : <FlightResultsCard data={msg.data} />}
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className={`ai-bubble ai-bubble--${msg.role}`}>
+                  <MarkdownText text={msg.content} />
+                </div>
+              );
+            })}
             {loading && (
               <div className="ai-bubble ai-bubble--assistant">
                 <span className="ai-typing"><span/><span/><span/></span>
@@ -201,7 +324,6 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
           <div className="ai-input-row">
             <textarea
               ref={inputRef}

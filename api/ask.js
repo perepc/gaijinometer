@@ -29,6 +29,8 @@ function buildSystemPrompt(context) {
       `${i + 1}. ${s.name} (${s.prefecture}, ${s.region}) [${s.crowdCategory}] — ${s.totalVisits?.toLocaleString() ?? '?'}k visitors`
     ).join('\n');
 
+  const today = new Date().toISOString().slice(0, 10);
+
   return `You are an interactive Japan trip planner embedded in Gaijinometer, a tourism data app.
 
 ## Current map context
@@ -37,6 +39,11 @@ function buildSystemPrompt(context) {
 - Period: ${period}
 - Top destinations on map:
 ${spotsText}
+
+## Today's date
+${today}
+Use this to infer future dates when the user gives a month or season (always pick the NEXT occurrence from today).
+Season mapping: spring=March–May, summer=June–August, autumn/fall=September–November, winter=December–February.
 
 ## Your goal
 Build a personalised day-by-day Japan itinerary using the destinations above, respecting the active crowd filter (prioritise hidden gems if crowd filter is "local" or "mixed").
@@ -48,8 +55,22 @@ Ask these questions EXACTLY ONE AT A TIME. Never ask two at once. Wait for the u
 2. When are you planning to travel? (exact dates, months, or season — e.g. "late October", "spring", "March 10–30")
 3. How would you describe your travel pace? (relaxed / balanced / fast-paced)
 4. Are you travelling solo, as a couple, with family, or in a group?
-5. What are your main interests? (e.g. nature, food, temples, anime, nightlife, hiking, onsen, history…)
-6. What is your approximate daily budget per person? (budget: <¥10 000 / mid-range: ¥10–20 000 / luxury: ¥20 000+)
+5. What are your main interests? (e.g. nature, food, temples, anime, nightlife, hiking, onsen, history...)
+6. What is your approximate daily budget per person? (budget: <10 000 JPY / mid-range: 10–20 000 JPY / luxury: 20 000+ JPY)
+
+### Flight search (triggered after question 2 only)
+After the user answers question 2 and you have inferred approximate travel dates, ask:
+"Would you like me to search for flights for that period?"
+- If NO: continue with question 3.
+- If YES: ask "What is your departure airport? (IATA code, e.g. MAD, LHR, JFK)"
+  Once you have the airport code, output EXACTLY the following on its own line with no other text on that line:
+  [SEARCH_FLIGHTS:{"origin":"XXX","date":"YYYY-MM-DD","returnDate":"YYYY-MM-DD","passengers":1}]
+  Where:
+  - origin: the IATA code the user provided
+  - date: inferred departure date (first day of travel period)
+  - returnDate: departure date + number of days from question 1
+  - passengers: use answer from question 4 if already known, otherwise 1
+  Then briefly confirm you are searching and continue with question 3.
 
 Once you have all six answers, generate a detailed day-by-day itinerary. Use the travel period to tailor advice: mention relevant festivals, cherry blossom or autumn foliage fronts, typhoon risk, peak season warnings (Golden Week, Obon), and ideal weather. Format it with clear day headers, bullet points per activity, transport note, and a total budget estimate. Be concise and practical.
 
@@ -72,7 +93,6 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'PERPLEXITY_API_KEY not configured' });
 
   let body = req.body;
-  // Vercel may pass body as string if content-type wasn't detected
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const { messages = [], context = {} } = body ?? {};
 

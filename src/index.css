@@ -1204,3 +1204,236 @@ select:focus, input:focus {
 .ai-send-btn:hover:not(:disabled) { opacity: 0.85; transform: scale(1.05); }
 .ai-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+
+/* ── Flight Search ───────────────────────────────────────────────────────── */
+.flight-search {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 0 8px;
+}
+
+.flight-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flight-icon { font-size: 22px; line-height: 1; }
+
+.flight-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.flight-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.flight-type-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.flight-type-btn {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px;
+  transition: all 0.2s;
+}
+
+.flight-type-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.flight-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flight-row {
+  display: flex;
+  gap: 8px;
+}
+
+.flight-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.flight-field label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flight-input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  padding: 7px 9px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.flight-input:focus { border-color: var(--accent); }
+.flight-input option { background: var(--bg2); }
+
+.flight-search-btn {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.flight-search-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+.flight-search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.flight-results { display: flex; flex-direction: column; gap: 8px; }
+
+.flight-results-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flight-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+
+.flight-card:hover { border-color: #0ea5e9; }
+
+.flight-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flight-airline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.airline-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.flight-price { text-align: right; }
+
+.price-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+
+.price-pax {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 3px;
+}
+
+.flight-card-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flight-card-route--return {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.flight-leg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 60px;
+}
+
+.flight-leg--right { align-items: flex-end; }
+
+.flight-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.flight-code {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.flight-middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.flight-duration {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.flight-line {
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  position: relative;
+}
+
+.flight-line-inner {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+  border-radius: 1px;
+}
+
+.flight-stops {
+  font-size: 10px;
+  color: var(--text-dim);
+}

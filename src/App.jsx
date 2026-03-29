@@ -5,6 +5,7 @@ import CrowdFilter from './components/CrowdFilter';
 import SpotInfo from './components/SpotInfo';
 import TopList from './components/TopList';
 import AiAdvisor from './components/AiAdvisor';
+import FlightSearch from './components/FlightSearch';
 import { spots, filterSpots, DATA_SOURCES, CROWD_CATEGORIES } from './data/japanSpots';
 import { useLang } from './i18n.jsx';
 import './App.css';
@@ -95,6 +96,9 @@ export default function App() {
             <button className={`tab-btn ${sidebarTab === 'ai' ? 'active' : ''}`} onClick={() => setSidebarTab('ai')}>
               {t('tabAI')}
             </button>
+            <button className={`tab-btn ${sidebarTab === 'flights' ? 'active' : ''}`} onClick={() => setSidebarTab('flights')}>
+              {t('tabFlights')}
+            </button>
           </div>
 
           <div className="sidebar-content">
@@ -121,6 +125,7 @@ export default function App() {
                 lang={lang}
               />
             )}
+            {sidebarTab === 'flights' && <FlightSearch />}
           </div>
 
           <SpotInfo spot={enrichedSelected} filter={filter} mode={mode} />

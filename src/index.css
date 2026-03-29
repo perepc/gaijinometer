@@ -1458,6 +1458,35 @@ select:focus, input:focus {
   opacity: 0.8;
 }
 
+.ai-flight-book-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-flight-book-btn {
+  flex: 1;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--accent);
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.ai-flight-book-btn:hover { opacity: 0.85; }
+
+.ai-flight-book-btn--secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
 .ai-flight-endpoint {
   display: flex;
   flex-direction: column;

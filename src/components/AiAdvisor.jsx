@@ -77,6 +77,26 @@ function formatTime(dt) {
   return new Date(dt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function googleFlightsUrl(o) {
+  // Google Flights deep-link: /flights/BCN-HND.HND-BCN/2026-09-25/2026-10-14
+  const base = 'https://www.google.com/travel/flights/search';
+  const out = `${o.originCode}-${o.destinationCode}`;
+  const ret = o.returnDeparture ? `.${o.destinationCode}-${o.originCode}` : '';
+  const outDate = o.departure ? o.departure.slice(0, 10) : '';
+  const retDate = o.returnDeparture ? `/${o.returnDeparture.slice(0, 10)}` : '';
+  return `${base}?tfs=CBwQAhopagcIARIDQkNOEgoyMDI2LTA5LTI1cgwIAxIIY0JDTi1ITkQaKWoHCAESA0hORBIKMjAyNi0xMC0xNHIMCAMSCGNITkQtQkNO&hl=es#flt=${out}${ret}.${outDate}${retDate}`;
+}
+
+function skyscannerUrl(o) {
+  const fmt = (dt) => dt ? new Date(dt).toISOString().slice(2, 10).replace(/-/g, '') : '';
+  const outDate = fmt(o.departure);
+  const retDate = o.returnDeparture ? fmt(o.returnDeparture) : '';
+  const path = retDate
+    ? `${o.originCode}/${o.destinationCode}/${outDate}/${retDate}/`
+    : `${o.originCode}/${o.destinationCode}/${outDate}/`;
+  return `https://www.skyscanner.net/transport/flights/${path}`;
+}
+
 function FlightResultsCard({ data }) {
   const { t } = useLang();
   if (data.error) return <p className="ai-error">{data.error}</p>;
@@ -130,6 +150,14 @@ function FlightResultsCard({ data }) {
               </span>
             </div>
           )}
+          <div className="ai-flight-book-row">
+            <a href={skyscannerUrl(o)} target="_blank" rel="noopener noreferrer" className="ai-flight-book-btn">
+              Skyscanner
+            </a>
+            <a href={`https://www.google.com/travel/flights/search?q=flights+${o.originCode}+to+${o.destinationCode}`} target="_blank" rel="noopener noreferrer" className="ai-flight-book-btn ai-flight-book-btn--secondary">
+              Google Flights
+            </a>
+          </div>
         </div>
       ))}
     </div>

@@ -66,8 +66,8 @@ After the user answers question 2 and you have inferred approximate travel dates
   When the user answers with a city or airport name:
   - Resolve it to IATA code(s) using your knowledge.
   - If the city has exactly one main international airport, use it directly.
-  - If the city has multiple airports (e.g. London: LHR, LGW, STN, LCY; Paris: CDG, ORY; New York: JFK, EWR, LGA; Tokyo: NRT, HND), list the options with full name and code and ask which they prefer. Wait for confirmation before outputting the marker.
-  Once you have a single confirmed IATA code, output EXACTLY the following on its own line with no other text on that line:
+  - IMPORTANT: If the city has multiple airports, you MUST list ALL options and ask the user to choose. NEVER pick one automatically. Do NOT output the marker until the user has confirmed a single airport. Examples: Barcelona: BCN (only one). London: LHR (Heathrow), LGW (Gatwick), STN (Stansted), LCY (City). Paris: CDG (Charles de Gaulle), ORY (Orly). Madrid: MAD (only one). Tokyo (arrival): NRT (Narita), HND (Haneda). Osaka: KIX (Kansai). Same rule applies for the destination: if the user says "Tokyo", ask NRT or HND.
+  Once the user has confirmed a single IATA code for both origin and destination, output EXACTLY the following on its own line with no other text on that line:
   [SEARCH_FLIGHTS:{"origin":"XXX","destination":"YYY","date":"YYYY-MM-DD","returnDate":"YYYY-MM-DD","passengers":1}]
   Where:
   - origin: the confirmed departure IATA code

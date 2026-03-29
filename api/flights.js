@@ -86,6 +86,15 @@ export default async function handler(req, res) {
       allOffers = results
         .filter((r) => r.status === 'fulfilled')
         .flatMap((r) => r.value);
+
+      // Deduplicate: same airline + outbound departure + destination + price = same flight
+      const seen = new Set();
+      allOffers = allOffers.filter((o) => {
+        const key = `${o.airlineCode}|${o.departure}|${o.destinationCode}|${o.price}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     } else {
       allOffers = await searchOffers(apiKey, { ...searchArgs, destination });
     }

@@ -2,7 +2,7 @@ const DUFFEL_BASE = 'https://api.duffel.com';
 const DUFFEL_VERSION = 'v2';
 
 // Main international airports in Japan
-const JAPAN_AIRPORTS = ['TYO', 'KIX', 'NGO', 'CTS', 'FUK'];
+const JAPAN_AIRPORTS = ['NRT', 'HND', 'KIX', 'NGO', 'CTS', 'FUK'];
 
 function duffelHeaders(apiKey) {
   return {

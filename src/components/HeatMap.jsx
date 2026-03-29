@@ -129,7 +129,7 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
         position: 'absolute',
         bottom: 28,
         right: 10,
-        zIndex: 1000,
+        zIndex: 2000,
         display: 'flex',
         borderRadius: 6,
         overflow: 'hidden',

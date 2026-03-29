@@ -141,11 +141,6 @@ export default function App() {
             ))}
           </div>
 
-          <div className="map-legend">
-            <span className="legend-label">{t('legendLow')}</span>
-            <div className="legend-gradient" />
-            <span className="legend-label">{t('legendHigh')}</span>
-          </div>
           <div className="map-sources">
             <span className="sources-label">{t('sources')}</span>
             {DATA_SOURCES.map((s) => (

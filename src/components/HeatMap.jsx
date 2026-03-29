@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
@@ -11,24 +11,11 @@ const CATEGORY_COLOR = Object.fromEntries(
 const JAPAN_CENTER = [36.5, 137.5];
 const DEFAULT_ZOOM = 5;
 
-const TILE_LAYERS = {
-  satellite: {
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    label: 'Satellite',
-  },
-  roadmap: {
-    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-    label: 'Map',
-  },
-};
-
 export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const heatLayerRef = useRef(null);
   const markersLayerRef = useRef(null);
-  const tileLayerRef = useRef(null);
-  const [activeLayer, setActiveLayer] = useState('satellite');
 
   // Init map once
   useEffect(() => {
@@ -40,7 +27,7 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
       zoomControl: true,
     });
 
-    tileLayerRef.current = L.tileLayer(TILE_LAYERS.satellite.url, {
+    L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>',
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
@@ -116,45 +103,8 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
     });
   }, [filteredSpots, selectedSpot, onSpotClick]);
 
-  // Switch tile layer when activeLayer changes
-  useEffect(() => {
-    if (!mapRef.current || !tileLayerRef.current) return;
-    tileLayerRef.current.setUrl(TILE_LAYERS[activeLayer].url);
-  }, [activeLayer]);
-
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-      <div style={{
-        position: 'absolute',
-        bottom: 28,
-        right: 10,
-        zIndex: 2000,
-        display: 'flex',
-        borderRadius: 6,
-        overflow: 'hidden',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
-      }}>
-        {Object.entries(TILE_LAYERS).map(([key, { label }]) => (
-          <button
-            key={key}
-            onClick={() => setActiveLayer(key)}
-            style={{
-              padding: '5px 11px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: 'none',
-              background: activeLayer === key ? '#e84040' : 'rgba(15,17,23,0.85)',
-              color: activeLayer === key ? '#fff' : '#c8cdd8',
-              transition: 'background 0.15s',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
   );
 }
 

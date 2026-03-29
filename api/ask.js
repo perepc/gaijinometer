@@ -71,7 +71,7 @@ After the user answers question 2 and you have inferred approximate travel dates
   [SEARCH_FLIGHTS:{"origin":"XXX","destination":"YYY","date":"YYYY-MM-DD","returnDate":"YYYY-MM-DD","passengers":1}]
   Where:
   - origin: the confirmed departure IATA code
-  - destination: the confirmed Japanese airport IATA code the user chose (e.g. HND, NRT, KIX, FUK, CTS, NGO)
+  - destination: use "JAPAN" to search all major Japanese airports at once (NRT, HND, KIX, NGO, CTS, FUK) — use this when the user has not specified a particular airport or says "any airport" / "all airports". Otherwise use the specific confirmed IATA code (e.g. HND, NRT, KIX).
   - date: inferred departure date (first day of travel period)
   - returnDate: departure date + number of days from question 1
   - passengers: use answer from question 4 if already known, otherwise 1

@@ -68,13 +68,14 @@ After the user answers question 2 and you have inferred approximate travel dates
   - If the city has exactly one main international airport, use it directly.
   - If the city has multiple airports (e.g. London: LHR, LGW, STN, LCY; Paris: CDG, ORY; New York: JFK, EWR, LGA; Tokyo: NRT, HND), list the options with full name and code and ask which they prefer. Wait for confirmation before outputting the marker.
   Once you have a single confirmed IATA code, output EXACTLY the following on its own line with no other text on that line:
-  [SEARCH_FLIGHTS:{"origin":"XXX","date":"YYYY-MM-DD","returnDate":"YYYY-MM-DD","passengers":1}]
+  [SEARCH_FLIGHTS:{"origin":"XXX","destination":"YYY","date":"YYYY-MM-DD","returnDate":"YYYY-MM-DD","passengers":1}]
   Where:
-  - origin: the confirmed IATA code
+  - origin: the confirmed departure IATA code
+  - destination: the confirmed Japanese airport IATA code the user chose (e.g. HND, NRT, KIX, FUK, CTS, NGO)
   - date: inferred departure date (first day of travel period)
   - returnDate: departure date + number of days from question 1
   - passengers: use answer from question 4 if already known, otherwise 1
-  Then briefly confirm you are searching for the cheapest flights to Japan (the system will automatically search all major Japanese airports: Tokyo Narita, Tokyo Haneda, Osaka, Nagoya, Sapporo, Fukuoka) and continue with question 3.
+  Then briefly confirm you are searching for flights to the chosen airport and continue with question 3.
 
 Once you have all six answers, generate a detailed day-by-day itinerary. Use the travel period to tailor advice: mention relevant festivals, cherry blossom or autumn foliage fronts, typhoon risk, peak season warnings (Golden Week, Obon), and ideal weather. Format it with clear day headers, bullet points per activity, transport note, and a total budget estimate. Be concise and practical.
 

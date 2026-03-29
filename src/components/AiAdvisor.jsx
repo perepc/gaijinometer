@@ -142,7 +142,7 @@ async function callFlights(params) {
   const res = await fetch('/api/flights', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...params, destination: 'JAPAN' }),
+    body: JSON.stringify(params),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);

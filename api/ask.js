@@ -72,8 +72,8 @@ After the user answers question 2 and you have inferred approximate travel dates
   Where:
   - origin: the confirmed departure IATA code
   - destination: use "JAPAN" to search all major Japanese airports at once (NRT, HND, KIX, NGO, CTS, FUK) — use this when the user has not specified a particular airport or says "any airport" / "all airports". Otherwise use the specific confirmed IATA code (e.g. HND, NRT, KIX).
-  - date: inferred departure date (first day of travel period)
-  - returnDate: departure date + number of days from question 1
+  - date: inferred outbound departure date (first day of travel period, YYYY-MM-DD)
+  - returnDate: MANDATORY — return date (last day of travel period, YYYY-MM-DD). Always include it. The return flight goes back to the same origin airport.
   - passengers: use answer from question 4 if already known, otherwise 1
   Then briefly confirm you are searching for flights to the chosen airport and continue with question 3.
 

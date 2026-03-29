@@ -115,6 +115,21 @@ function FlightResultsCard({ data }) {
               <span className="ai-flight-dt">{formatTime(o.arrival)}</span>
             </span>
           </div>
+          {o.returnDeparture && (
+            <div className="ai-flight-route ai-flight-route--return">
+              <span className="ai-flight-endpoint">
+                <span className="ai-flight-iata">{o.destinationCode}</span>
+                <span className="ai-flight-dt">{formatTime(o.returnDeparture)}</span>
+              </span>
+              <span className="ai-flight-mid">
+                <span className="ai-flight-line" />
+              </span>
+              <span className="ai-flight-endpoint ai-flight-endpoint--right">
+                <span className="ai-flight-iata">{o.originCode}</span>
+                <span className="ai-flight-dt">{formatTime(o.returnArrival)}</span>
+              </span>
+            </div>
+          )}
         </div>
       ))}
     </div>

@@ -1451,6 +1451,13 @@ select:focus, input:focus {
   gap: 6px;
 }
 
+.ai-flight-route--return {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  opacity: 0.8;
+}
+
 .ai-flight-endpoint {
   display: flex;
   flex-direction: column;

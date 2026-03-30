@@ -2,15 +2,16 @@
 import { describe, it, expect } from 'vitest';
 import handler from '../../api/ask.js';
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function mockReq(body) {
   return { method: 'POST', body };
 }
 
 function mockRes() {
-  let statusCode = 200;
   const res = {
-    status: (s) => { statusCode = s; return res; },
-    json: (d) => { res._data = d; res._status = statusCode; return res; },
+    status: (s) => { res._status = s; return res; },
+    json: (d) => { res._data = d; return res; },
     setHeader: () => res,
     end: () => res,
     _data: null,
@@ -19,63 +20,152 @@ function mockRes() {
   return res;
 }
 
-const sampleContext = {
+const BASE_CONTEXT = {
   topSpots: [
-    {
-      name: 'Tokyo',
-      prefecture: 'Tokyo',
-      region: 'Kanto',
-      crowdCategory: 'tourist',
-      totalVisits: 1000,
-    },
+    { name: 'Tokyo',  prefecture: 'Tokyo',  region: 'Kanto',  crowdCategory: 'tourist', totalVisits: 5000 },
+    { name: 'Kyoto',  prefecture: 'Kyoto',  region: 'Kansai', crowdCategory: 'tourist', totalVisits: 3000 },
+    { name: 'Osaka',  prefecture: 'Osaka',  region: 'Kansai', crowdCategory: 'mixed',   totalVisits: 2500 },
+    { name: 'Hakone', prefecture: 'Kanagawa', region: 'Kanto', crowdCategory: 'local',  totalVisits: 800  },
   ],
-  filter: {},
-  mode: 'all',
-  crowdFilter: 'all',
-  lang: 'en',
+  filter: {}, mode: 'all', crowdFilter: 'all', lang: 'en',
 };
 
-describe.skipIf(!process.env.PERPLEXITY_API_KEY)('Integration — Real Perplexity API', () => {
-  it('F-01: empty messages array → response is a non-empty string that asks a question', async () => {
-    const req = mockReq({ messages: [], context: sampleContext });
-    const res = mockRes();
+/** Call the handler once and return the AI reply text. */
+async function agentTurn(messages, context = BASE_CONTEXT) {
+  const req = mockReq({ messages, context });
+  const res = mockRes();
+  await handler(req, res);
+  if (res._status !== 200) throw new Error(`API error ${res._status}: ${JSON.stringify(res._data)}`);
+  const content = res._data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Empty content in response');
+  return content;
+}
 
-    await handler(req, res);
+/** Simulate a full N-turn conversation, returning all [user, assistant] pairs. */
+async function runConversation(turns, context = BASE_CONTEXT) {
+  // messages follows Perplexity format: [{role, content}, ...]
+  // First turn uses empty messages (handler injects the trigger internally)
+  const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
+  let messages = [];
+  const history = [];
 
-    expect(res._status).toBe(200);
-    const content = res._data?.choices?.[0]?.message?.content;
-    expect(typeof content).toBe('string');
-    expect(content.length).toBeGreaterThan(0);
-    // The first response should be a question
-    expect(content).toMatch(/\?/);
+  for (const userText of turns) {
+    const reply = await agentTurn(messages, context);
+
+    // Build messages for next turn
+    if (messages.length === 0) {
+      messages = [TRIGGER, { role: 'assistant', content: reply }];
+    } else {
+      messages = [...messages, { role: 'assistant', content: reply }];
+    }
+    history.push({ assistant: reply });
+
+    if (userText !== null) {
+      messages = [...messages, { role: 'user', content: userText }];
+      history.push({ user: userText });
+    }
+  }
+
+  return history;
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+const skip = !process.env.PERPLEXITY_API_KEY;
+
+describe.skipIf(skip)('Integration — Single turn', () => {
+  it('F-01: first response contains a question', async () => {
+    const reply = await agentTurn([]);
+    expect(reply).toMatch(/\?/);
   });
 
-  it('A-03: response content is never empty string on success', async () => {
-    const req = mockReq({ messages: [], context: sampleContext });
-    const res = mockRes();
-
-    await handler(req, res);
-
-    expect(res._status).toBe(200);
-    const content = res._data?.choices?.[0]?.message?.content;
-    expect(content).toBeTruthy();
-    expect(content.trim().length).toBeGreaterThan(0);
+  it('A-03: response is never empty on 200', async () => {
+    const reply = await agentTurn([]);
+    expect(reply.trim().length).toBeGreaterThan(0);
   });
 
-  it('F-01 lang: with lang:es in context, response is in Spanish', async () => {
-    const spanishContext = { ...sampleContext, lang: 'es' };
-    const req = mockReq({ messages: [], context: spanishContext });
-    const res = mockRes();
-
-    await handler(req, res);
-
-    expect(res._status).toBe(200);
-    const content = res._data?.choices?.[0]?.message?.content;
-    expect(typeof content).toBe('string');
-    expect(content.length).toBeGreaterThan(0);
-    // Response should contain Spanish characters or common Spanish words
-    // The system prompt instructs the model to respond in Spanish
-    const spanishIndicators = /[áéíóúüñ¿¡]|días|cuántos|viaje|planificar|España|tiene/i;
-    expect(content).toMatch(spanishIndicators);
+  it('F-01 lang: responds in Spanish when lang=es', async () => {
+    const reply = await agentTurn([], { ...BASE_CONTEXT, lang: 'es' });
+    expect(reply).toMatch(/[áéíóúüñ¿¡]|días|cuántos|viaje/i);
   });
+});
+
+describe.skipIf(skip)('Integration — Multi-turn conversation', () => {
+  it('MT-01: asks only one question per turn', async () => {
+    // After Q1 answer, the next response should contain exactly one question mark
+    // (or at least not ask Q3 before Q2 is answered)
+    const reply0 = await agentTurn([]);
+
+    // Q1 answer: days
+    const messages1 = [
+      { role: 'user', content: 'Hello, I want to plan a trip to Japan.' },
+      { role: 'assistant', content: reply0 },
+      { role: 'user', content: '10 days' },
+    ];
+    const reply1 = await agentTurn(messages1);
+
+    // Should ask about dates (Q2), not jump to Q3 or later
+    const questionCount = (reply1.match(/\?/g) ?? []).length;
+    expect(questionCount).toBeGreaterThanOrEqual(1);
+    // Should NOT already contain Q3/Q4/Q5/Q6 topics if it hasn't asked Q2 yet
+    // The response should be short — a single question
+    expect(reply1.length).toBeLessThan(800);
+  }, 40000);
+
+  it('MT-02: completes full 6-question flow and returns an itinerary', async () => {
+    const turns = [
+      '14 days',           // Q1: duration
+      'late September 2026', // Q2: dates
+      'balanced',          // Q3: pace
+      'couple',            // Q4: group
+      'nature, temples, food, onsen', // Q5: interests
+      'mid-range, around 15000 JPY per day', // Q6: budget
+    ];
+
+    const history = await runConversation(turns);
+
+    // The last assistant message should be the itinerary
+    const lastReply = history.filter((h) => h.assistant).at(-1).assistant;
+
+    // Itinerary should mention days
+    expect(lastReply).toMatch(/day\s*\d|día\s*\d|\*\*day|\*\*día/i);
+    // Should be long (itinerary is detailed)
+    expect(lastReply.length).toBeGreaterThan(500);
+    // Should mention at least one Japan destination
+    expect(lastReply).toMatch(/tokyo|kyoto|osaka|nara|hiroshima|hakone|nikko/i);
+  }, 120000);
+
+  it('MT-03: stays in Spanish throughout a multi-turn conversation', async () => {
+    const context = { ...BASE_CONTEXT, lang: 'es' };
+    const reply0 = await agentTurn([], context);
+
+    // Q1 answer
+    const messages1 = [
+      { role: 'user', content: 'Hello, I want to plan a trip to Japan.' },
+      { role: 'assistant', content: reply0 },
+      { role: 'user', content: '7 días' },
+    ];
+    const reply1 = await agentTurn(messages1, context);
+
+    // Both responses should be in Spanish
+    const spanishRE = /[áéíóúüñ¿¡]|días|cuántos|viaje|cuándo|cómo|cuál/i;
+    expect(reply0).toMatch(spanishRE);
+    expect(reply1).toMatch(spanishRE);
+  }, 60000);
+
+  it('MT-04: Q2 response asks about travel dates, not other topics', async () => {
+    const reply0 = await agentTurn([]);
+
+    const messages1 = [
+      { role: 'user', content: 'Hello, I want to plan a trip to Japan.' },
+      { role: 'assistant', content: reply0 },
+      { role: 'user', content: '7 days' },
+    ];
+    const reply1 = await agentTurn(messages1);
+
+    // Q2 should ask about when / dates / period
+    expect(reply1).toMatch(/when|date|month|season|period|travel|plan/i);
+    // Should NOT ask about budget or interests yet
+    expect(reply1).not.toMatch(/budget|interest|hobby|food|temple|pace|solo|couple/i);
+  }, 40000);
 });

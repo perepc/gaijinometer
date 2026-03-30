@@ -1132,6 +1132,23 @@ select:focus, input:focus {
   padding: 5px 8px;
 }
 
+/* ── Spot links in AI chat ───────────────────────────────────────────────── */
+mark.ai-spot-link {
+  background: transparent;
+  color: #7dd3fc;
+  text-decoration: underline dotted #7dd3fc;
+  text-underline-offset: 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0 1px;
+  transition: background 0.15s, color 0.15s;
+}
+mark.ai-spot-link:hover {
+  background: rgba(125,211,252,0.15);
+  color: #bae6fd;
+  text-decoration: underline solid #bae6fd;
+}
+
 /* ── AI Chat UI ──────────────────────────────────────────────────────────── */
 .ai-reset-btn {
   margin-left: auto;

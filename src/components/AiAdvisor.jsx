@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useLang } from '../i18n.jsx';
 import { stripArtifacts, renderInline } from '../utils/markdown.js';
 import {
@@ -8,12 +8,39 @@ import {
 
 // ── Markdown renderer ───────────────────────────────────────────────────────
 
-function MarkdownText({ text }) {
+function renderWithSpots(text, spotPattern, spotsByLower, onHover, onLeave, onClickSpot) {
+  if (!spotPattern) return renderInline(text);
+  const re = new RegExp(spotPattern.source, 'gi');
+  const parts = [];
+  let last = 0, key = 0, match;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(...renderInline(text.slice(last, match.index)));
+    const spot = spotsByLower[match[0].toLowerCase()];
+    if (spot) {
+      parts.push(
+        <mark key={`sp${key++}`} className="ai-spot-link"
+          onMouseEnter={() => onHover(spot)}
+          onMouseLeave={onLeave}
+          onClick={() => onClickSpot(spot)}
+        >{match[0]}</mark>
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(...renderInline(text.slice(last)));
+  return parts;
+}
+
+function MarkdownText({ text, spotPattern, spotsByLower, onSpotHover, onSpotLeave, onSpotClick }) {
   const clean = stripArtifacts(text);
   const lines = clean.split('\n');
   const elements = [];
   let listItems = [];
   let key = 0;
+
+  const render = (t) => renderWithSpots(t, spotPattern, spotsByLower, onSpotHover, onSpotLeave, onSpotClick);
 
   const flushList = () => {
     if (listItems.length) { elements.push(<ul key={key++}>{listItems}</ul>); listItems = []; }
@@ -24,12 +51,12 @@ function MarkdownText({ text }) {
     if (!line || /^#{1,3}$/.test(line)) { flushList(); continue; }
     if (/^#{1,3}\s/.test(line)) {
       flushList();
-      elements.push(<p key={key++} className="ai-msg-heading">{renderInline(line.replace(/^#{1,3}\s/, ''))}</p>);
+      elements.push(<p key={key++} className="ai-msg-heading">{render(line.replace(/^#{1,3}\s/, ''))}</p>);
     } else if (line.startsWith('- ') || line.startsWith('• ')) {
-      listItems.push(<li key={key++}>{renderInline(line.replace(/^[-•]\s*/, ''))}</li>);
+      listItems.push(<li key={key++}>{render(line.replace(/^[-•]\s*/, ''))}</li>);
     } else {
       flushList();
-      elements.push(<p key={key++}>{renderInline(line)}</p>);
+      elements.push(<p key={key++}>{render(line)}</p>);
     }
   }
   flushList();
@@ -111,7 +138,7 @@ async function callApi(messages, context, onChunk) {
 
 const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
 
-export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, lang }) {
+export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, lang, onSpotHighlight, onSpotClick }) {
   const { t } = useLang();
   const [messages, setMessages]       = useState([]);
   const [input, setInput]             = useState('');
@@ -131,6 +158,21 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     })),
     filter, mode, crowdFilter, lang,
   };
+
+  const spotsByLower = useMemo(() => {
+    const map = {};
+    filteredSpots.forEach((s) => { map[s.name.toLowerCase()] = s; });
+    return map;
+  }, [filteredSpots]);
+
+  const spotPattern = useMemo(() => {
+    if (!filteredSpots.length) return null;
+    const names = filteredSpots
+      .map((s) => s.name)
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return new RegExp(names.join('|'), 'i');
+  }, [filteredSpots]);
 
   // Restore latest session silently on mount
   useEffect(() => {
@@ -283,7 +325,14 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
           <div className="ai-messages">
             {visibleMessages.map((msg, i) => (
               <div key={i} className={`ai-bubble ai-bubble--${msg.role}`}>
-                <MarkdownText text={msg.content} />
+                <MarkdownText
+                  text={msg.content}
+                  spotPattern={msg.role === 'assistant' ? spotPattern : null}
+                  spotsByLower={spotsByLower}
+                  onSpotHover={onSpotHighlight}
+                  onSpotLeave={() => onSpotHighlight?.(null)}
+                  onSpotClick={onSpotClick}
+                />
               </div>
             ))}
             {loading && visibleMessages.at(-1)?.content === '' && (

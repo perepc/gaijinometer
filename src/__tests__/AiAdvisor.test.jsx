@@ -29,13 +29,34 @@ function renderAdvisor(props = {}) {
   );
 }
 
+// Build a minimal SSE ReadableStream body for the given content string
+function makeSseBody(content) {
+  const encoder = new TextEncoder();
+  const chunks = content
+    ? [
+        encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`),
+        encoder.encode('data: [DONE]\n\n'),
+      ]
+    : [encoder.encode('data: [DONE]\n\n')];
+  let i = 0;
+  return {
+    getReader() {
+      return {
+        read() {
+          return i < chunks.length
+            ? Promise.resolve({ done: false, value: chunks[i++] })
+            : Promise.resolve({ done: true, value: undefined });
+        },
+      };
+    },
+  };
+}
+
 function mockFetchSuccess(content = 'How many days do you have?') {
   return vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: async () => ({
-      choices: [{ message: { content } }],
-    }),
+    body: makeSseBody(content),
   });
 }
 
@@ -50,6 +71,8 @@ function mockFetchError(status = 500, errorMessage = 'Internal Server Error') {
 beforeEach(() => {
   // jsdom doesn't implement scrollIntoView
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  // Clear any sessions persisted by previous tests
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -68,9 +91,7 @@ describe('F-04 / F-05 — Loading lock', () => {
           resolve({
             ok: true,
             status: 200,
-            json: async () => ({
-              choices: [{ message: { content: 'How many days?' } }],
-            }),
+            body: makeSseBody('How many days?'),
           });
       })
     );
@@ -122,27 +143,26 @@ describe('A-03 — Empty API response', () => {
 // ── F-06 — Reset ──────────────────────────────────────────────────────────────
 
 describe('F-06 — Reset', () => {
-  it('after starting and receiving a reply, clicking reset clears messages and resets state', async () => {
+  it('clicking the New button opens the session picker', async () => {
+    // First fetch returns the initial greeting
     vi.stubGlobal('fetch', mockFetchSuccess('How many days do you have?'));
     renderAdvisor();
 
     const startBtn = screen.getByRole('button', { name: /start planning/i });
     fireEvent.click(startBtn);
 
-    // Wait for the reply to appear
     await waitFor(() => {
       expect(screen.getByText('How many days do you have?')).toBeInTheDocument();
     });
 
-    // Click reset
+    // Click the ↺ New button — should open the session picker
     const resetBtn = screen.getByRole('button', { name: /new/i });
     fireEvent.click(resetBtn);
 
-    // After reset, start button should be visible again and chat messages gone
+    // Session picker should appear with a "new trip" option
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /start planning/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /\+/i })).toBeInTheDocument();
     });
-    expect(screen.queryByText('How many days do you have?')).not.toBeInTheDocument();
   });
 });
 

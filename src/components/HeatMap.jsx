@@ -11,11 +11,13 @@ const CATEGORY_COLOR = Object.fromEntries(
 const JAPAN_CENTER = [36.5, 137.5];
 const DEFAULT_ZOOM = 5;
 
-export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
-  const containerRef = useRef(null);
-  const mapRef = useRef(null);
-  const heatLayerRef = useRef(null);
+export default function HeatMap({ filteredSpots, selectedSpot, highlightedSpot, onSpotClick }) {
+  const containerRef    = useRef(null);
+  const mapRef          = useRef(null);
+  const heatLayerRef    = useRef(null);
   const markersLayerRef = useRef(null);
+  const markersByIdRef  = useRef({});   // spotId → L.circleMarker
+  const prevHighlight   = useRef(null); // { marker, originalStyle }
 
   // Init map once
   useEffect(() => {
@@ -100,8 +102,33 @@ export default function HeatMap({ filteredSpots, selectedSpot, onSpotClick }) {
 
       marker.on('click', () => onSpotClick(spot));
       markersLayerRef.current.addLayer(marker);
+      markersByIdRef.current[spot.id] = { marker, baseRadius: relSize, baseStyle: {
+        color: isSelected ? '#ffffff' : 'rgba(0,0,0,0.4)',
+        weight: isSelected ? 2.5 : 1.5,
+        fillOpacity: isSelected ? 0.95 : 0.80,
+      }};
     });
   }, [filteredSpots, selectedSpot, onSpotClick]);
+
+  // Highlight effect — pan to spot and pulse its marker
+  useEffect(() => {
+    // Reset previous highlight
+    if (prevHighlight.current) {
+      const { marker, baseRadius, baseStyle } = prevHighlight.current;
+      marker.setStyle(baseStyle);
+      marker.setRadius(baseRadius);
+      prevHighlight.current = null;
+    }
+    if (!highlightedSpot || !mapRef.current) return;
+    const entry = markersByIdRef.current[highlightedSpot.id];
+    if (!entry) return;
+    const { marker, baseRadius, baseStyle } = entry;
+    prevHighlight.current = { marker, baseRadius, baseStyle };
+    marker.setStyle({ color: '#ffffff', weight: 2.5, fillOpacity: 1 });
+    marker.setRadius(baseRadius + 6);
+    marker.bringToFront();
+    mapRef.current.panTo([highlightedSpot.lat, highlightedSpot.lng], { animate: true, duration: 0.4 });
+  }, [highlightedSpot]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

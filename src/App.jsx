@@ -15,6 +15,7 @@ export default function App() {
   const { lang, setLang, t } = useLang();
   const [filter, setFilter] = useState(INITIAL_FILTER);
   const [selectedSpot, setSelectedSpot] = useState(null);
+  const [highlightedSpot, setHighlightedSpot] = useState(null);
   const [sidebarTab, setSidebarTab] = useState('filter');
   const [mode, setMode] = useState('all');
   const [crowdFilter, setCrowdFilter] = useState('all');
@@ -119,6 +120,8 @@ export default function App() {
                 mode={mode}
                 crowdFilter={crowdFilter}
                 lang={lang}
+                onSpotHighlight={setHighlightedSpot}
+                onSpotClick={handleSpotClick}
               />
             )}
           </div>
@@ -130,6 +133,7 @@ export default function App() {
           <HeatMap
             filteredSpots={filteredSpots}
             selectedSpot={enrichedSelected}
+            highlightedSpot={highlightedSpot}
             onSpotClick={handleSpotClick}
           />
           <div className="map-category-legend">

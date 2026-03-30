@@ -146,11 +146,11 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     });
   }, []); // eslint-disable-line
 
-  // Persist session on every messages change
+  // Persist session when streaming finishes (loading → false)
   useEffect(() => {
-    if (!started || messages.length < 2 || !sessionId || loading) return;
+    if (loading || !started || messages.length < 2 || !sessionId) return;
     saveSession({ id: sessionId, savedAt: Date.now(), messages, contextSnapshot: { mode, crowdFilter } });
-  }, [messages, started, sessionId]); // eslint-disable-line
+  }, [messages, started, sessionId, loading]); // eslint-disable-line
 
   // Scroll to bottom
   useEffect(() => {

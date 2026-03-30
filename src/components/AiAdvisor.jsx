@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useLang } from '../i18n.jsx';
-import { stripArtifacts, renderInline } from '../utils/markdown.js';
+import { stripArtifacts } from '../utils/markdown.js';
 import {
   loadSessions, saveSession, deleteSession,
   isOld, filtersChanged, sessionPreview, formatSavedAt, newSessionId,
@@ -8,28 +8,62 @@ import {
 
 // ── Markdown renderer ───────────────────────────────────────────────────────
 
-function renderWithSpots(text, spotPattern, spotsByLower, onHover, onLeave, onClickSpot) {
-  if (!spotPattern) return renderInline(text);
+// Render only spot links within a string (used inside bold/italic spans)
+function renderSpotLinks(text, spotPattern, spotsByLower, onHover, onLeave, onClickSpot) {
   const re = new RegExp(spotPattern.source, 'gi');
   const parts = [];
   let last = 0, key = 0, match;
   while ((match = re.exec(text)) !== null) {
-    if (match.index > last) parts.push(...renderInline(text.slice(last, match.index)));
+    if (match.index > last) parts.push(text.slice(last, match.index));
     const spot = spotsByLower[match[0].toLowerCase()];
-    if (spot) {
-      parts.push(
-        <mark key={`sp${key++}`} className="ai-spot-link"
-          onMouseEnter={() => onHover(spot)}
-          onMouseLeave={onLeave}
-          onClick={() => onClickSpot(spot)}
-        >{match[0]}</mark>
+    parts.push(spot
+      ? <mark key={`sp${key++}`} className="ai-spot-link"
+          onMouseEnter={() => onHover(spot)} onMouseLeave={onLeave}
+          onClick={() => onClickSpot?.(spot)}>{match[0]}</mark>
+      : match[0]
+    );
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+// Single-pass parser: bold (**), italic (*), and spot links in one regex
+function renderWithSpots(text, spotPattern, spotsByLower, onHover, onLeave, onClickSpot) {
+  const spotSrc = spotPattern ? spotPattern.source : null;
+  const combined = new RegExp(
+    `(\\*\\*(.+?)\\*\\*)|(\\*([^*]+?)\\*)${spotSrc ? `|(${spotSrc})` : ''}`,
+    'gi'
+  );
+  const parts = [];
+  let last = 0, key = 0, match;
+  while ((match = combined.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    if (match[1]) {
+      // Bold — process spot links inside
+      const inner = spotSrc
+        ? renderSpotLinks(match[2], spotPattern, spotsByLower, onHover, onLeave, onClickSpot)
+        : [match[2]];
+      parts.push(<strong key={key++}>{inner}</strong>);
+    } else if (match[3]) {
+      // Italic — process spot links inside
+      const inner = spotSrc
+        ? renderSpotLinks(match[4], spotPattern, spotsByLower, onHover, onLeave, onClickSpot)
+        : [match[4]];
+      parts.push(<em key={key++}>{inner}</em>);
+    } else if (match[5]) {
+      // Spot name at top level
+      const spot = spotsByLower[match[5].toLowerCase()];
+      parts.push(spot
+        ? <mark key={`sp${key++}`} className="ai-spot-link"
+            onMouseEnter={() => onHover(spot)} onMouseLeave={onLeave}
+            onClick={() => onClickSpot?.(spot)}>{match[5]}</mark>
+        : match[5]
       );
-    } else {
-      parts.push(match[0]);
     }
     last = match.index + match[0].length;
   }
-  if (last < text.length) parts.push(...renderInline(text.slice(last)));
+  if (last < text.length) parts.push(text.slice(last));
   return parts;
 }
 

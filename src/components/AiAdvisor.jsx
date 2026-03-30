@@ -1,6 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLang } from '../i18n.jsx';
 import { stripArtifacts, renderInline } from '../utils/markdown.js';
+import {
+  loadSessions, saveSession, deleteSession,
+  isOld, filtersChanged, sessionPreview, formatSavedAt, newSessionId,
+} from '../utils/sessions.js';
+
+// ── Markdown renderer ───────────────────────────────────────────────────────
 
 function MarkdownText({ text }) {
   const clean = stripArtifacts(text);
@@ -30,6 +36,36 @@ function MarkdownText({ text }) {
   return <>{elements}</>;
 }
 
+// ── Session picker ──────────────────────────────────────────────────────────
+
+function SessionPicker({ sessions, onSelect, onNew, onClose }) {
+  const { t } = useLang();
+  return (
+    <div className="ai-session-picker">
+      <div className="ai-session-picker-header">
+        <span>{t('sessionPickerTitle')}</span>
+        <button className="ai-session-close" onClick={onClose}>✕</button>
+      </div>
+      {sessions.map((s) => (
+        <div key={s.id} className="ai-session-item">
+          <button className="ai-session-item-btn" onClick={() => onSelect(s)}>
+            <span className="ai-session-date">{formatSavedAt(s.savedAt)}</span>
+            <span className="ai-session-preview">{sessionPreview(s.messages)}</span>
+          </button>
+          <button
+            className="ai-session-delete"
+            title="Delete"
+            onClick={() => deleteSession(s.id) || onClose()}
+          >🗑</button>
+        </div>
+      ))}
+      <button className="ai-session-new-btn" onClick={onNew}>
+        + {t('sessionNew')}
+      </button>
+    </div>
+  );
+}
+
 // ── API call (streaming) ────────────────────────────────────────────────────
 
 async function callApi(messages, context, onChunk) {
@@ -56,7 +92,7 @@ async function callApi(messages, context, onChunk) {
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
-    buffer = lines.pop(); // keep incomplete line for next chunk
+    buffer = lines.pop();
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       const payload = line.slice(6).trim();
@@ -77,13 +113,16 @@ const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.
 
 export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, lang }) {
   const { t } = useLang();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [started, setStarted] = useState(false);
+  const [messages, setMessages]       = useState([]);
+  const [input, setInput]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
+  const [started, setStarted]         = useState(false);
+  const [sessionId, setSessionId]     = useState(null);
+  const [showPicker, setShowPicker]   = useState(false);
+  const [warns, setWarns]             = useState({ old: false, filters: false });
   const bottomRef = useRef(null);
-  const inputRef = useRef(null);
+  const inputRef  = useRef(null);
 
   const context = {
     topSpots: filteredSpots.slice(0, 15).map((s) => ({
@@ -93,11 +132,36 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     filter, mode, crowdFilter, lang,
   };
 
+  // Restore latest session silently on mount
+  useEffect(() => {
+    const sessions = loadSessions();
+    if (!sessions.length) return;
+    const latest = sessions[0];
+    setMessages(latest.messages);
+    setStarted(true);
+    setSessionId(latest.id);
+    setWarns({
+      old: isOld(latest),
+      filters: filtersChanged(latest, mode, crowdFilter),
+    });
+  }, []); // eslint-disable-line
+
+  // Persist session on every messages change
+  useEffect(() => {
+    if (!started || messages.length < 2 || !sessionId || loading) return;
+    saveSession({ id: sessionId, savedAt: Date.now(), messages, contextSnapshot: { mode, crowdFilter } });
+  }, [messages, started, sessionId]); // eslint-disable-line
+
+  // Scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const handleStart = useCallback(async () => {
+  const startNew = useCallback(async () => {
+    const id = newSessionId();
+    setSessionId(id);
+    setWarns({ old: false, filters: false });
+    setShowPicker(false);
     setStarted(true);
     setError(null);
     setLoading(true);
@@ -115,6 +179,20 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
       inputRef.current?.focus();
     }
   }, [filteredSpots, filter, mode, crowdFilter]); // eslint-disable-line
+
+  // Keep handleStart as alias for startNew (used by the start button)
+  const handleStart = startNew;
+
+  const handleSelectSession = useCallback((s) => {
+    setMessages(s.messages);
+    setStarted(true);
+    setSessionId(s.id);
+    setShowPicker(false);
+    setWarns({
+      old: isOld(s),
+      filters: filtersChanged(s, mode, crowdFilter),
+    });
+  }, [mode, crowdFilter]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -142,12 +220,10 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     }
   }, [input, messages, loading, filteredSpots, filter, mode, crowdFilter]); // eslint-disable-line
 
-  const handleReset = () => { setMessages([]); setStarted(false); setError(null); setInput(''); };
-
-  const modeLabel = { all: t('aiAllVisitors'), international: t('aiIntlOnly'), domestic: t('aiDomOnly') }[mode];
+  const modeLabel  = { all: t('aiAllVisitors'), international: t('aiIntlOnly'), domestic: t('aiDomOnly') }[mode];
   const crowdLabel = { all: t('aiAllSpots'), local: t('aiLocalGems'), mixed: t('aiMixed'), tourist: t('aiTourist') }[crowdFilter];
-
   const visibleMessages = messages.filter((m) => m.content !== TRIGGER.content);
+  const savedSessions = loadSessions();
 
   return (
     <div className="ai-advisor">
@@ -158,7 +234,9 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
           <p className="ai-subtitle">{t('aiSubtitle')}</p>
         </div>
         {started && (
-          <button className="ai-reset-btn" title="New trip" onClick={handleReset}>{t('aiNew')}</button>
+          <button className="ai-reset-btn" onClick={() => setShowPicker(true)}>
+            {t('aiNew')}
+          </button>
         )}
       </div>
 
@@ -171,17 +249,37 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
         </div>
       </div>
 
-      {!started && (
+      {showPicker && (
+        <SessionPicker
+          sessions={savedSessions}
+          onSelect={handleSelectSession}
+          onNew={startNew}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {!started && !showPicker && (
         <div className="ai-start">
           <p className="ai-start-desc">{t('aiStartDesc')}</p>
           <button className="ai-ask-btn" onClick={handleStart} disabled={filteredSpots.length === 0}>
             {t('aiStartBtn')}
           </button>
+          {savedSessions.length > 0 && (
+            <button className="ai-session-resume-btn" onClick={() => setShowPicker(true)}>
+              {t('sessionResume', savedSessions.length)}
+            </button>
+          )}
         </div>
       )}
 
-      {started && (
+      {started && !showPicker && (
         <div className="ai-chat">
+          {(warns.old || warns.filters) && (
+            <div className="ai-session-warns">
+              {warns.old && <span className="ai-session-warn">📅 {t('sessionWarnOld')}</span>}
+              {warns.filters && <span className="ai-session-warn">⚠ {t('sessionWarnFilters')}</span>}
+            </div>
+          )}
           <div className="ai-messages">
             {visibleMessages.map((msg, i) => (
               <div key={i} className={`ai-bubble ai-bubble--${msg.role}`}>

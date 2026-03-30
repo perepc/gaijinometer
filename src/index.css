@@ -1018,6 +1018,120 @@ select:focus, input:focus {
   padding: 8px;
 }
 
+/* ── AI Session picker ───────────────────────────────────────────────────── */
+.ai-session-picker {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ai-session-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin-bottom: 4px;
+}
+
+.ai-session-close {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.ai-session-close:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+
+.ai-session-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-session-item-btn {
+  flex: 1;
+  text-align: left;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background 0.15s;
+}
+.ai-session-item-btn:hover { background: rgba(255,255,255,0.09); }
+
+.ai-session-date {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.ai-session-preview {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-session-delete {
+  font-size: 13px;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.ai-session-delete:hover { color: var(--accent); background: rgba(232,64,64,0.1); }
+
+.ai-session-new-btn {
+  margin-top: 2px;
+  padding: 7px;
+  border-radius: 7px;
+  border: 1px dashed var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ai-session-new-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+.ai-session-resume-btn {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 6px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  align-self: center;
+}
+.ai-session-resume-btn:hover { color: var(--text); }
+
+.ai-session-warns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 6px;
+}
+
+.ai-session-warn {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(255,200,0,0.07);
+  border: 1px solid rgba(255,200,0,0.2);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
 /* ── AI Chat UI ──────────────────────────────────────────────────────────── */
 .ai-reset-btn {
   margin-left: auto;

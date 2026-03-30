@@ -66,6 +66,11 @@ const translations = {
     aiStartBtn:      '✨ Start planning',
     aiPlaceholder:   'Type your answer…',
     aiNew:           '↺ New',
+    sessionPickerTitle: 'Your trips',
+    sessionNew:      'New trip',
+    sessionResume:   (n) => `Resume a saved trip (${n})`,
+    sessionWarnOld:  'This session is over a week old — some dates may have passed.',
+    sessionWarnFilters: 'Map filters have changed since this session was saved.',
     // FlightSearch
     tabFlights:          '✈️ Flights',
     flightTitle:         'Cheapest Flights to Japan',
@@ -150,6 +155,11 @@ const translations = {
     aiStartBtn:      '✨ Comenzar a planificar',
     aiPlaceholder:   'Escribe tu respuesta…',
     aiNew:           '↺ Nuevo',
+    sessionPickerTitle: 'Tus viajes',
+    sessionNew:      'Nuevo viaje',
+    sessionResume:   (n) => `Retomar viaje guardado (${n})`,
+    sessionWarnOld:  'Esta sesión tiene más de una semana — algunas fechas pueden haber pasado.',
+    sessionWarnFilters: 'Los filtros del mapa han cambiado desde que se guardó esta sesión.',
     // FlightSearch
     tabFlights:          '✈️ Vuelos',
     flightTitle:         'Vuelos más baratos a Japón',

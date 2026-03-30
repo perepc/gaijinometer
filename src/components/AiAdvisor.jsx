@@ -127,6 +127,71 @@ function SessionPicker({ sessions, onSelect, onNew, onClose }) {
   );
 }
 
+// ── Itinerary export ────────────────────────────────────────────────────────
+
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function inlineHtml(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+}
+
+function msgToHtml(text) {
+  const lines = stripArtifacts(text).split('\n');
+  const out = [];
+  let inList = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if (inList) { out.push('</ul>'); inList = false; }
+      continue;
+    }
+    if (line.startsWith('### ')) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h3>${inlineHtml(line.slice(4))}</h3>`); continue; }
+    if (line.startsWith('## '))  { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h2>${inlineHtml(line.slice(3))}</h2>`); continue; }
+    if (line.startsWith('# '))   { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h1>${inlineHtml(line.slice(2))}</h1>`); continue; }
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${inlineHtml(line.slice(2))}</li>`);
+      continue;
+    }
+    if (inList) { out.push('</ul>'); inList = false; }
+    out.push(`<p>${inlineHtml(line)}</p>`);
+  }
+  if (inList) out.push('</ul>');
+  return out.join('\n');
+}
+
+function exportItinerary(visibleMessages, title, contextLine) {
+  const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${esc(title)}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #111; font-size: 15px; line-height: 1.7; }
+  h1 { font-size: 26px; margin-bottom: 4px; }
+  .meta { color: #666; font-size: 13px; margin-bottom: 32px; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+  h2 { font-size: 18px; margin-top: 28px; margin-bottom: 6px; }
+  h3 { font-size: 15px; margin-top: 20px; margin-bottom: 4px; }
+  p { margin: 6px 0; }
+  ul { margin: 6px 0 10px 20px; padding: 0; }
+  li { margin: 3px 0; }
+  .bubble-user { background: #f4f4f4; border-left: 3px solid #bbb; padding: 8px 12px; margin: 16px 0 4px; font-style: italic; color: #444; }
+  .bubble-assistant { margin: 4px 0 20px; }
+  @media print { body { margin: 20px; } }
+</style></head><body>
+<h1>${esc(title)}</h1>
+<div class="meta">${esc(date)}${contextLine ? ' &nbsp;·&nbsp; ' + esc(contextLine) : ''}</div>
+${visibleMessages.map((m) => m.role === 'user'
+  ? `<div class="bubble-user">${esc(m.content)}</div>`
+  : `<div class="bubble-assistant">${msgToHtml(m.content)}</div>`
+).join('\n')}
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
 // ── API call (streaming) ────────────────────────────────────────────────────
 
 async function callApi(messages, context, onChunk) {
@@ -310,9 +375,19 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
           <p className="ai-subtitle">{t('aiSubtitle')}</p>
         </div>
         {started && (
-          <button className="ai-reset-btn" onClick={() => setShowPicker(true)}>
-            {t('aiNew')}
-          </button>
+          <div className="ai-header-actions">
+            {visibleMessages.length > 2 && !loading && (
+              <button className="ai-export-btn" onClick={() => exportItinerary(
+                visibleMessages, t('aiExportTitle'),
+                `${filteredSpots.length} ${t('aiDests')} · ${crowdLabel}`
+              )}>
+                {t('aiExport')}
+              </button>
+            )}
+            <button className="ai-reset-btn" onClick={() => setShowPicker(true)}>
+              {t('aiNew')}
+            </button>
+          </div>
         )}
       </div>
 

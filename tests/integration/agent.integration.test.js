@@ -43,27 +43,23 @@ async function agentTurn(messages, context = BASE_CONTEXT) {
 
 /** Simulate a full N-turn conversation, returning all [user, assistant] pairs. */
 async function runConversation(turns, context = BASE_CONTEXT) {
-  // messages follows Perplexity format: [{role, content}, ...]
-  // First turn uses empty messages (handler injects the trigger internally)
   const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
   let messages = [];
   const history = [];
 
+  // Get opening AI message (Q1)
+  const firstReply = await agentTurn(messages, context);
+  messages = [TRIGGER, { role: 'assistant', content: firstReply }];
+  history.push({ assistant: firstReply });
+
+  // Each turn: add user answer → get AI reply
   for (const userText of turns) {
+    messages = [...messages, { role: 'user', content: userText }];
+    history.push({ user: userText });
+
     const reply = await agentTurn(messages, context);
-
-    // Build messages for next turn
-    if (messages.length === 0) {
-      messages = [TRIGGER, { role: 'assistant', content: reply }];
-    } else {
-      messages = [...messages, { role: 'assistant', content: reply }];
-    }
+    messages = [...messages, { role: 'assistant', content: reply }];
     history.push({ assistant: reply });
-
-    if (userText !== null) {
-      messages = [...messages, { role: 'user', content: userText }];
-      history.push({ user: userText });
-    }
   }
 
   return history;

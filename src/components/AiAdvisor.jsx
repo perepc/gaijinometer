@@ -30,21 +30,45 @@ function MarkdownText({ text }) {
   return <>{elements}</>;
 }
 
-// ── API call ────────────────────────────────────────────────────────────────
+// ── API call (streaming) ────────────────────────────────────────────────────
 
-async function callApi(messages, context) {
+async function callApi(messages, context, onChunk) {
   const res = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, context }),
   });
-  let data;
-  try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status} — invalid response`); }
+
   if (!res.ok) {
+    let data;
+    try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status}`); }
     const msg = typeof data?.error === 'string' ? data.error : JSON.stringify(data?.error ?? data);
     throw new Error(msg);
   }
-  return data.choices?.[0]?.message?.content ?? '';
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullContent = '';
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // keep incomplete line for next chunk
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = line.slice(6).trim();
+      if (payload === '[DONE]') continue;
+      try {
+        const delta = JSON.parse(payload).choices?.[0]?.delta?.content ?? '';
+        if (delta) { fullContent += delta; onChunk?.(fullContent); }
+      } catch { /* ignore malformed lines */ }
+    }
+  }
+
+  return fullContent;
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
@@ -75,14 +99,17 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
 
   const handleStart = useCallback(async () => {
     setStarted(true);
-    setMessages([]);
     setError(null);
     setLoading(true);
+    const base = [TRIGGER, { role: 'assistant', content: '' }];
+    setMessages(base);
     try {
-      const reply = await callApi([], context);
-      setMessages([TRIGGER, { role: 'assistant', content: reply }]);
+      await callApi([], context, (partial) => {
+        setMessages([TRIGGER, { role: 'assistant', content: partial }]);
+      });
     } catch (err) {
       setError(err.message);
+      setMessages([TRIGGER]);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -94,16 +121,21 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     if (!text || loading) return;
 
     const apiMessages = [...messages, { role: 'user', content: text }];
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
     setInput('');
     setError(null);
     setLoading(true);
     try {
-      const reply = await callApi(apiMessages, context);
-      const assistantMsg = { role: 'assistant', content: reply };
-      setMessages((prev) => [...prev, assistantMsg]);
+      await callApi(apiMessages, context, (partial) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { role: 'assistant', content: partial };
+          return next;
+        });
+      });
     } catch (err) {
       setError(err.message);
+      setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -156,7 +188,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
                 <MarkdownText text={msg.content} />
               </div>
             ))}
-            {loading && (
+            {loading && visibleMessages.at(-1)?.content === '' && (
               <div className="ai-bubble ai-bubble--assistant">
                 <span className="ai-typing"><span/><span/><span/></span>
               </div>

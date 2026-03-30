@@ -12,10 +12,10 @@ function mockRes() {
   const res = {
     status: (s) => { res._status = s; return res; },
     json: (d) => { res._data = d; return res; },
+    write: (chunk) => { res._raw += chunk; },
     setHeader: () => res,
     end: () => res,
-    _data: null,
-    _status: 200,
+    _data: null, _status: 200, _raw: '',
   };
   return res;
 }
@@ -30,14 +30,25 @@ const BASE_CONTEXT = {
   filter: {}, mode: 'all', crowdFilter: 'all', lang: 'en',
 };
 
-/** Call the handler once and return the AI reply text. */
+/** Call the handler once and return the AI reply text (parses SSE stream). */
 async function agentTurn(messages, context = BASE_CONTEXT) {
   const req = mockReq({ messages, context });
   const res = mockRes();
   await handler(req, res);
   if (res._status !== 200) throw new Error(`API error ${res._status}: ${JSON.stringify(res._data)}`);
-  const content = res._data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('Empty content in response');
+
+  // Parse SSE chunks accumulated in res._raw
+  let content = '';
+  for (const line of res._raw.split('\n')) {
+    if (!line.startsWith('data: ')) continue;
+    const payload = line.slice(6).trim();
+    if (payload === '[DONE]') continue;
+    try {
+      const delta = JSON.parse(payload).choices?.[0]?.delta?.content ?? '';
+      content += delta;
+    } catch { /* skip malformed */ }
+  }
+  if (!content) throw new Error('Empty content in streaming response');
   return content;
 }
 

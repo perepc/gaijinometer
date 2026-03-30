@@ -99,15 +99,31 @@ export default async function handler(req, res) {
         ],
         max_tokens: 3000,
         temperature: 0.7,
+        stream: true,
       }),
     });
 
-    const data = await pplxRes.json();
     if (!pplxRes.ok) {
+      const data = await pplxRes.json();
       const msg = data?.error?.message ?? data?.detail ?? JSON.stringify(data);
       return res.status(pplxRes.status).json({ error: msg });
     }
-    return res.status(200).json(data);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const reader = pplxRes.body.getReader();
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(decoder.decode(value, { stream: true }));
+      }
+    } finally {
+      res.end();
+    }
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

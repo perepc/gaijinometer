@@ -1,7 +1,7 @@
 function buildSystemPrompt(context) {
   const { topSpots, filter, mode, crowdFilter, lang } = context;
   const langInstruction = lang === 'es'
-    ? 'IMPORTANT: Respond entirely in Spanish (Castilian). All text, headings, and bullet points must be in Spanish.'
+    ? 'IMPORTANT: Respond entirely in Spanish (Castilian). Use informal "tú" (never "usted"). All text, headings, and bullet points must be in Spanish.'
     : 'Respond in English.';
 
   const modeLabel = {

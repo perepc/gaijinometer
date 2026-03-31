@@ -233,6 +233,12 @@ async function callApi(messages, context, onChunk) {
   return fullContent;
 }
 
+// ── Currency rates ──────────────────────────────────────────────────────────
+
+const CURRENCIES   = ['JPY', 'EUR', 'USD', 'GBP', 'AUD', 'CAD', 'SGD', 'KRW', 'CNY', 'CHF'];
+const RATES_URL    = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/jpy.json';
+const FALLBACK_RATES = { EUR: 0.0063, USD: 0.0067, GBP: 0.0053, AUD: 0.0100, CAD: 0.0091, SGD: 0.0091, KRW: 9.09, CNY: 0.048, CHF: 0.0060 };
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 const TRIGGER = { role: 'user', content: 'Hello, I want to plan a trip to Japan.' };
@@ -247,6 +253,9 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
   const [sessionId, setSessionId]     = useState(null);
   const [showPicker, setShowPicker]   = useState(false);
   const [warns, setWarns]             = useState({ old: false, filters: false });
+  const [currency, setCurrency]       = useState('EUR');
+  const [rates, setRates]             = useState(FALLBACK_RATES);
+  const [rateDate, setRateDate]       = useState(null);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -256,6 +265,9 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
       crowdCategory: s.crowdCategory, totalVisits: s.totalVisits,
     })),
     filter, mode, crowdFilter, lang,
+    currency,
+    currencyRate: currency !== 'JPY' ? rates[currency] : null,
+    rateDate,
   };
 
   const spotsByLower = useMemo(() => {
@@ -273,6 +285,22 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     return new RegExp(names.join('|'), 'i');
   }, [filteredSpots]);
 
+  // Fetch live exchange rates once on mount
+  useEffect(() => {
+    fetch(RATES_URL)
+      .then((r) => r.json())
+      .then((data) => {
+        const r = {};
+        CURRENCIES.filter((c) => c !== 'JPY').forEach((c) => {
+          const v = data.jpy?.[c.toLowerCase()];
+          if (v) r[c] = v;
+        });
+        setRates((prev) => ({ ...prev, ...r }));
+        if (data.date) setRateDate(data.date);
+      })
+      .catch(() => { /* keep fallback rates */ });
+  }, []); // eslint-disable-line
+
   // Restore latest session silently on mount
   useEffect(() => {
     const sessions = loadSessions();
@@ -281,6 +309,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     setMessages(latest.messages);
     setStarted(true);
     setSessionId(latest.id);
+    if (latest.contextSnapshot?.currency) setCurrency(latest.contextSnapshot.currency);
     setWarns({
       old: isOld(latest),
       filters: filtersChanged(latest, mode, crowdFilter),
@@ -290,7 +319,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
   // Persist session when streaming finishes (loading → false)
   useEffect(() => {
     if (loading || !started || messages.length < 2 || !sessionId) return;
-    saveSession({ id: sessionId, savedAt: Date.now(), messages, contextSnapshot: { mode, crowdFilter } });
+    saveSession({ id: sessionId, savedAt: Date.now(), messages, contextSnapshot: { mode, crowdFilter, currency } });
   }, [messages, started, sessionId, loading]); // eslint-disable-line
 
   // Scroll to bottom
@@ -329,6 +358,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
     setStarted(true);
     setSessionId(s.id);
     setShowPicker(false);
+    if (s.contextSnapshot?.currency) setCurrency(s.contextSnapshot.currency);
     setWarns({
       old: isOld(s),
       filters: filtersChanged(s, mode, crowdFilter),
@@ -397,6 +427,15 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
           <span className="ai-pill">{modeLabel}</span>
           <span className="ai-pill">{crowdLabel}</span>
           <span className="ai-pill">{filteredSpots.length} {t('aiDests')}</span>
+          <select
+            className="ai-currency-select"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            aria-label={t('aiCurrency')}
+            title={rateDate ? `${t('aiCurrency')}: ${rateDate}` : t('aiCurrency')}
+          >
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </div>
 

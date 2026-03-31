@@ -1,5 +1,10 @@
+const CURRENCY_SYM = {
+  EUR: '€', USD: '$', GBP: '£', AUD: 'A$', CAD: 'C$',
+  SGD: 'S$', KRW: '₩', CNY: '¥CN', CHF: 'CHF',
+};
+
 function buildSystemPrompt(context) {
-  const { topSpots, filter, mode, crowdFilter, lang } = context;
+  const { topSpots, filter, mode, crowdFilter, lang, currency, currencyRate, rateDate } = context;
   const langInstruction = lang === 'es'
     ? 'IMPORTANT: Respond entirely in Spanish (Castilian). Use informal "tú" (never "usted"). All text, headings, and bullet points must be in Spanish.'
     : 'Respond in English.';
@@ -31,6 +36,24 @@ function buildSystemPrompt(context) {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Currency conversion helpers
+  let budgetTiers = 'budget: <10 000 JPY / mid-range: 10–20 000 JPY / luxury: 20 000+ JPY';
+  let currencyInstruction = '';
+  if (currency && currency !== 'JPY' && currencyRate) {
+    const sym = CURRENCY_SYM[currency] ?? (currency + ' ');
+    const fmt = (jpy) => {
+      const val = jpy * currencyRate;
+      return currency === 'KRW'
+        ? `${sym}${Math.round(val).toLocaleString()}`
+        : `${sym}${val < 10 ? val.toFixed(2) : Math.round(val)}`;
+    };
+    const dateNote = rateDate ? ` (rate as of ${rateDate})` : ' (approximate)';
+    budgetTiers = `budget: <¥10,000 (~${fmt(10000)}) / mid-range: ¥10,000–20,000 (~${fmt(10000)}–${fmt(20000)}) / luxury: ¥20,000+ (~${fmt(20000)}+)`;
+    currencyInstruction = `\n## Budget currency\nExpress all price estimates in both JPY (¥) and ${currency} (${sym}).`
+      + ` Use rate: 1 JPY = ${currencyRate.toFixed(6)} ${currency}${dateNote}.`
+      + ` Format: "¥10,000 (~${fmt(10000)})". Always show JPY first.`;
+  }
+
   return `You are an interactive Japan trip planner embedded in Gaijinometer, a tourism data app.
 
 ## Current map context
@@ -56,7 +79,7 @@ Ask these questions EXACTLY ONE AT A TIME. Never ask two at once. Wait for the u
 3. How would you describe your travel pace? (relaxed / balanced / fast-paced)
 4. Are you travelling solo, as a couple, with family, or in a group?
 5. What are your main interests? (e.g. nature, food, temples, anime, nightlife, hiking, onsen, history...)
-6. What is your approximate daily budget per person? (budget: <10 000 JPY / mid-range: 10–20 000 JPY / luxury: 20 000+ JPY)
+6. What is your approximate daily budget per person? (${budgetTiers})
 
 Once you have all six answers, generate a detailed day-by-day itinerary. Use the travel period to tailor advice: mention relevant festivals, cherry blossom or autumn foliage fronts, typhoon risk, peak season warnings (Golden Week, Obon), and ideal weather. Format it with clear day headers, bullet points per activity, transport note, and a total budget estimate. Be concise and practical.
 
@@ -64,7 +87,7 @@ Once you have all six answers, generate a detailed day-by-day itinerary. Use the
 - Keep each question to 1–2 lines. Be warm and conversational.
 - When generating the itinerary, group days by region to minimise travel.
 - Do NOT include citation markers like [1] or word counts in your response.
-- ${langInstruction}`;
+- ${langInstruction}${currencyInstruction}`;
 }
 
 export default async function handler(req, res) {

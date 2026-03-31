@@ -872,6 +872,21 @@ select:focus, input:focus {
   padding: 3px 9px;
 }
 
+.ai-currency-select {
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+.ai-currency-select:hover { border-color: var(--text-dim); }
+.ai-currency-select:focus { border-color: var(--accent); }
+
 .ai-question-area {
   display: flex;
   flex-direction: column;

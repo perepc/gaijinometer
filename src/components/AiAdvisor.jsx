@@ -376,7 +376,7 @@ export default function AiAdvisor({ filteredSpots, filter, mode, crowdFilter, la
         </div>
         {started && (
           <div className="ai-header-actions">
-            {visibleMessages.length > 2 && !loading && (
+            {visibleMessages.length > 2 && !loading && !showPicker && (
               <button className="ai-export-btn" onClick={() => exportItinerary(
                 visibleMessages, t('aiExportTitle'),
                 `${filteredSpots.length} ${t('aiDests')} · ${crowdLabel}`
